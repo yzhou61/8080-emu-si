@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define TRACE() fprintf(stderr, "%s at %ld\n", __FUNCTION__, state->pc)
+#define TRACE() fprintf(stderr, "==== %s at 0x%04lx\n", __FUNCTION__, state->pc)
 
 struct options_t {
     const char *bin_name;
@@ -9,6 +9,9 @@ struct options_t {
 
 struct state_t {
     long pc;
+    unsigned char *program;
+    long program_size;
+    int sp;
 };
 
 static void usage()
@@ -78,9 +81,13 @@ Failed:
     return succeeded ? size : -1;
 }
 
-static void deinit_program(unsigned char *program)
+static int read_16b(struct state_t *state)
 {
-    free(program);
+    int res;
+
+    res = state->program[state->pc + 2] * 256 + state->program[state->pc + 1];
+
+    return res;
 }
 
 static void NOP(struct state_t *state)
@@ -89,35 +96,41 @@ static void NOP(struct state_t *state)
     ++(state->pc);
 }
 
-static void JMP(unsigned char *program, struct state_t *state)
+static void JMP(struct state_t *state)
 {
-    int pc;
-
     TRACE();
-    pc = program[state->pc + 2] * 256 + program[state->pc + 1];
-    fprintf(stderr, "JMP to %d\n", pc);
-    state->pc = pc;
+    state->pc = read_16b(state);
 }
 
-static int execute_one(unsigned char *program, struct state_t *state)
+static void LXI(struct state_t *state, int *reg)
 {
-    switch(program[state->pc]) {
+    TRACE();
+    *reg = read_16b(state);
+    state->pc += 3;
+}
+
+static int execute_one(struct state_t *state)
+{
+    switch(state->program[state->pc]) {
         case 0x00:
             NOP(state);
             return 0;
+        case 0x31:
+            LXI(state, &(state->sp));
+            return 0;
         case 0xC3:
-            JMP(program, state);
+            JMP(state);
             return 0;
         default:
-            fprintf(stderr, "Unrecognized instruction %2x at %ld\n", program[state->pc], state->pc);
+            fprintf(stderr, "Unrecognized instruction 0x%02x at 0x%04lx\n", state->program[state->pc], state->pc);
             return -1;
     }
 }
 
-static int execute(unsigned char *program, long program_size, struct state_t *state)
+static int execute(struct state_t *state)
 {
-    while (state->pc < program_size) {
-        int res = execute_one(program, state);
+    while (state->pc < state->program_size) {
+        int res = execute_one(state);
 
         if (res < 0) {
             return -1;
@@ -127,13 +140,17 @@ static int execute(unsigned char *program, long program_size, struct state_t *st
     return 0;
 }
 
-static void init_state(struct state_t *state)
+static void init_state(struct state_t *state, unsigned char *program, long program_size)
 {
     state->pc = 0;
+    state->program = program;
+    state->program_size = program_size;
+    state->sp = 0;
 }
 
 static void deinit_state(struct state_t *state)
 {
+    free(state->program);
 }
 
 int main(int argc, char **argv)
@@ -156,12 +173,10 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    init_state(&state);
+    init_state(&state, program, program_size);
 
-    res = execute(program, program_size, &state);
+    res = execute(&state);
 
     deinit_state(&state);
-
-    deinit_program(program);
     return 0;
 }
