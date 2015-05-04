@@ -1,17 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define TRACE() fprintf(stderr, "==== %s at 0x%04lx\n", __FUNCTION__, state->pc)
+#define MEMSIZE (1 << 16)
+
+#define TRACE() fprintf(stderr, "==== %s(0x%02x) at 0x%04lx ", __FUNCTION__, state->program[state->pc], state->pc)
+
+#define TRACE_STATE() fprintf(stderr, " (pc:0x%04lx,sp:0x%04x,b:0x%02x)\n", state->pc, state->sp, state->b)
 
 struct options_t {
     const char *bin_name;
 };
 
 struct state_t {
-    long pc;
+    unsigned long pc;
     unsigned char *program;
-    long program_size;
-    int sp;
+    unsigned long program_size;
+    unsigned int sp;
+    unsigned int b;
+    unsigned char *mem;
 };
 
 static void usage()
@@ -81,6 +87,15 @@ Failed:
     return succeeded ? size : -1;
 }
 
+static int read_8b(struct state_t *state)
+{
+    int res;
+
+    res = state->program[state->pc + 1];
+
+    return res;
+}
+
 static int read_16b(struct state_t *state)
 {
     int res;
@@ -109,22 +124,47 @@ static void LXI(struct state_t *state, int *reg)
     state->pc += 3;
 }
 
+static void MVI(struct state_t *state, int *reg)
+{
+    TRACE();
+    *reg = read_8b(state);
+    state->pc += 2;
+}
+
+static void CAL(struct state_t *state)
+{
+    int pc;
+
+    TRACE();
+    pc = read_16b(state);
+
+}
+
 static int execute_one(struct state_t *state)
 {
     switch(state->program[state->pc]) {
         case 0x00:
             NOP(state);
-            return 0;
+            break;
+        case 0x06:
+            MVI(state, &(state->b));
+            break;
         case 0x31:
             LXI(state, &(state->sp));
-            return 0;
+            break;
         case 0xC3:
             JMP(state);
-            return 0;
+            break;
+        case 0xCD:
+            CAL(state);
+            break;
         default:
             fprintf(stderr, "Unrecognized instruction 0x%02x at 0x%04lx\n", state->program[state->pc], state->pc);
             return -1;
     }
+
+    TRACE_STATE();
+    return 0;
 }
 
 static int execute(struct state_t *state)
@@ -146,6 +186,7 @@ static void init_state(struct state_t *state, unsigned char *program, long progr
     state->program = program;
     state->program_size = program_size;
     state->sp = 0;
+    state->mem = calloc(1, MEMSIZE);
 }
 
 static void deinit_state(struct state_t *state)
