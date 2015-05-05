@@ -27,17 +27,17 @@
 #define FS (0x80)
 #define FZ (0x40)
 #define F0 (0)
-#define FA (0x10)
+#define FA (0x10) // TODO
 //#define F0 (0)
 #define FP (0x04)
 #define F1 (1)
 #define FC (0x01)
 
-#define TRACE(name) fprintf(stderr, "0x%04lx\t%4s\t", state->pc, #name)
-//#define TRACE(name) fprintf(stderr, "0x%04lx\t%4s(0x%02x)\t\t", state->pc, #name, state->program[state->pc])
+#define TRACE(...) //fprintf(stderr, __VA_ARGS__)
 
-#define TRACE_STATE() fprintf(stderr, \
-                              "\t\t\t\tpc:0x%04lx,sp:0x%04x,a:0x%02x,b:0x%02x,c:0x%02x,d:0x%02x,e:0x%02x,f:"BYTETOBINARYPATTERN",h:0x%02x,l:0x%02x)\n", \
+#define TRACE_INS(name) TRACE("0x%04lx\t%4s\t", state->pc, #name)
+
+#define TRACE_STATE() TRACE("\t\t\t\tpc:0x%04lx,sp:0x%04x,a:0x%02x,b:0x%02x,c:0x%02x,d:0x%02x,e:0x%02x,f:"BYTETOBINARYPATTERN",h:0x%02x,l:0x%02x)\n", \
                               state->pc, state->sp, state->a, *(state->b), *(state->c), *(state->d), *(state->e), BYTETOBINARY(state->f), *(state->h), *(state->l)); \
                       print_stack(state)
 
@@ -74,6 +74,8 @@ struct state_t {
     unsigned char *l;
     unsigned char *mem;
 };
+
+static int stop = 0;
 
 static void usage()
 {
@@ -140,9 +142,9 @@ static unsigned char read_8b(struct state_t *state)
 
     res = state->program[state->pc + 1];
 
-    state->pc += 2;
+    state->pc += 1;
 
-    fprintf(stderr, "0x%04x\t", res);
+    TRACE("0x%04x\t", res);
 
     return res;
 }
@@ -153,9 +155,9 @@ static unsigned int read_16b(struct state_t *state)
 
     res = state->program[state->pc + 2] * 256 + state->program[state->pc + 1];
 
-    state->pc += 3;
+    state->pc += 2;
 
-    fprintf(stderr, "0x%04x\t", res);
+    TRACE("0x%04x\t", res);
 
     return res;
 }
@@ -164,13 +166,13 @@ static void print_stack(struct state_t *state)
 {
     int i;
 
-    fprintf(stderr, "\t\t\t\t");
+    TRACE("\t\t\t\t");
 
     for (i = STACK_BOTTOM; i >= state->sp; --i) {
-        fprintf(stderr, "0x%02x ", state->mem[i]);
+        TRACE("0x%02x ", state->mem[i]);
     }
 
-    fprintf(stderr, "\n");
+    TRACE("\n");
 }
 
 static unsigned char parity(unsigned char b)
@@ -179,6 +181,27 @@ static unsigned char parity(unsigned char b)
     b = ((b & 0xCC) >> 2) + (b & 0x33);
     b = ((b & 0xF0) >> 4) + (b & 0x0F);
     return b;
+}
+
+static void set_flags(struct state_t *state, unsigned char res)
+{
+    if (0 == res) {
+        state->f |= FZ;
+    } else {
+        state->f &= ~FZ;
+    }
+
+    if (res >= 0x80) {
+        state->f |= FS;
+    } else {
+        state->f &= ~FS;
+    }
+
+    if ((parity(res) & 0x01) == 0) {
+        state->f |= FP;
+    } else {
+        state->f &= ~FP;
+    }
 }
 
 static void NOP(struct state_t *state)
@@ -203,11 +226,13 @@ static void JNZ(struct state_t *state)
 static void LXI(struct state_t *state, unsigned int *reg)
 {
     *reg = read_16b(state);
+    ++(state->pc);
 }
 
 static void MVI(struct state_t *state, unsigned char *reg)
 {
     *reg = read_8b(state);
+    ++(state->pc);
 }
 
 static void CAL(struct state_t *state)
@@ -215,6 +240,7 @@ static void CAL(struct state_t *state)
     unsigned int pc;
 
     pc = read_16b(state);
+    ++(state->pc);
     state->mem[--state->sp] = (state->pc >> 8) & 0x00FF;
     state->mem[--state->sp] = state->pc & 0x00FF;
 
@@ -243,35 +269,64 @@ static void MOVM(struct state_t *state, unsigned char src)
     ++(state->pc);
 }
 
+static void MOV(struct state_t *state, unsigned char *dst, unsigned char src)
+{
+    *dst = src;
+    ++(state->pc);
+}
+
+static void MVIM(struct state_t *state)
+{
+    unsigned char i = read_8b(state);
+    state->mem[state->hl] = i;
+    ++(state->pc);
+}
+
 static void INX(struct state_t *state, unsigned int *reg)
 {
     ++(*reg);
     ++(state->pc);
 }
 
+static unsigned char sub(struct state_t *state, unsigned int a, unsigned int b)
+{
+    if (a >= b) {
+        state->f &= ~FC;
+    } else {
+        state->f |= FC;
+    }
+
+    a -= b;
+
+    set_flags(state, a);
+
+    return a;
+}
+
 static void DCR(struct state_t *state, unsigned char *reg)
 {
     unsigned char value = *reg;
 
-    --value;
-
-    if (0 == value) {
-        state->f |= FZ;
-    }
-
-    if (value < 0x80) {
-        state->f |= FS;
-    }
-
-    if ((parity(value) & 0x01) == 0) {
-        state->f |= FP;
-    }
-
-    if (value == 0xFF) {
-        state->f |= FC;
-    }
+    value = sub(state, value, 1);
 
     *reg = value;
+
+    ++(state->pc);
+}
+
+static void CPI(struct state_t *state)
+{
+    unsigned char i = read_8b(state);
+
+    state->a = sub(state, state->a, i);
+
+    ++(state->pc);
+}
+
+static void PUSH(struct state_t *state, unsigned int reg)
+{
+    state->mem[--state->sp] = (reg >> 8) & 0x00FF;
+    state->mem[--state->sp] = reg & 0x00FF;
 
     ++(state->pc);
 }
@@ -280,76 +335,114 @@ static int execute_one(struct state_t *state)
 {
     switch(state->program[state->pc]) {
         case 0x00:
-            TRACE(NOP);
+            TRACE_INS("NOP");
             NOP(state);
             break;
         case 0x05:
-            TRACE(DCR);
-            fprintf(stderr, "B\t");
+            TRACE_INS(DCR);
+            TRACE("B\t");
             DCR(state, state->b);
             break;
         case 0x06:
-            TRACE(MVI);
-            fprintf(stderr, "B\t");
+            TRACE_INS(MVI);
+            TRACE("B\t");
             MVI(state, state->b);
             break;
+        case 0x0E:
+            TRACE_INS(MVI);
+            TRACE("C\t");
+            MVI(state, state->c);
+            break;
         case 0x11:
-            TRACE(LXI);
-            fprintf(stderr, "DE\t");
+            TRACE_INS(LXI);
+            TRACE("DE\t");
             LXI(state, &(state->de));
             break;
         case 0x13:
-            TRACE(INX);
-            fprintf(stderr, "DE\t");
+            TRACE_INS(INX);
+            TRACE("DE\t");
             INX(state, &(state->de));
             break;
         case 0x1A:
-            TRACE(LDAX);
-            fprintf(stderr, "DE\t");
+            TRACE_INS(LDAX);
+            TRACE("DE\t");
             LDAX(state, state->de);
             break;
         case 0x21:
-            TRACE(LXI);
-            fprintf(stderr, "HL\t");
+            TRACE_INS(LXI);
+            TRACE("HL\t");
             LXI(state, &(state->hl));
             break;
         case 0x23:
-            TRACE(INX);
-            fprintf(stderr, "HL\t");
+            TRACE_INS(INX);
+            TRACE("HL\t");
             INX(state, &(state->hl));
             break;
+        case 0x26:
+            TRACE_INS(MVI);
+            TRACE("H\t");
+            MVI(state, state->h);
+            break;
         case 0x31:
-            TRACE(LXI);
-            fprintf(stderr, "SP\t");
+            TRACE_INS(LXI);
+            TRACE("SP\t");
             LXI(state, &(state->sp));
             break;
+        case 0x36:
+            TRACE_INS(MVIM);
+            MVIM(state);
+            break;
+        case 0x6F:
+            TRACE_INS(MOV);
+            TRACE("L\tA\t");
+            MOV(state, state->l, state->a);
+            break;
         case 0x77:
-            TRACE(MOVM);
-            fprintf(stderr, "A\t");
+            TRACE_INS(MOVM);
+            TRACE("A\t");
             MOVM(state, state->a);
             break;
+        case 0x7C:
+            TRACE_INS(MOV);
+            TRACE("A\tH\t");
+            MOV(state, &(state->a), *state->h);
+            break;
         case 0xC2:
-            TRACE(JNZ);
+            TRACE_INS(JNZ);
             JNZ(state);
             break;
         case 0xC3:
-            TRACE(JMP);
+            TRACE_INS(JMP);
             JMP(state);
             break;
         case 0xC9:
-            TRACE(RET);
+            TRACE_INS(RET);
             RET(state);
             break;
         case 0xCD:
-            TRACE(CAL);
+            TRACE_INS(CAL);
             CAL(state);
+            break;
+        case 0xD5:
+            TRACE_INS(PUSH);
+            TRACE("D\tE\t");
+            PUSH(state, state->de);
+            break;
+        case 0xE5:
+            TRACE_INS(PUSH);
+            TRACE("H\tL\t");
+            PUSH(state, state->hl);
+            break;
+        case 0xFE:
+            TRACE_INS(CPI);
+            CPI(state);
             break;
         default:
             fprintf(stderr, "Unrecognized instruction 0x%02x at 0x%04lx\n", state->program[state->pc], state->pc);
             return -1;
     }
 
-    fprintf(stderr, "\n");
+    TRACE("\n");
 
     TRACE_STATE();
     return 0;
@@ -357,7 +450,7 @@ static int execute_one(struct state_t *state)
 
 static int execute(struct state_t *state)
 {
-    while (state->pc < state->program_size) {
+    while (stop == 0 && state->pc < state->program_size) {
         int res = execute_one(state);
 
         if (res < 0) {
