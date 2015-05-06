@@ -1,0 +1,31 @@
+Zero:
+If the result of an instruction has the
+value 0, this flag is set: otherwise it is
+resat.
+Sign:
+If the most significant bit of the result of
+the operation has the value 1, this flag is
+set; otherwise it is reset.
+Parity:
+If the modulo 2 sum of the bits of the re·
+suit of the operation is 0, (Le., if the
+result has even parity) this flag is set,
+otherwise it is reset (Le., if the result has
+odd parity).
+Carry:
+If the instruction resulted in a carry
+(from addition), or a borrow (from subtraction
+or a comparison) out of the high·
+order bit, this flag is set; otherwise it is
+reset,
+Auxiliary Carry:
+If the instruction caused a carry out
+of bit 3 and into bit 4 of the resulting
+value, the auxiliary carry i,; set; otherwise
+it is reset. This flag is affected by single
+preciSIon additions, subtractions, incre·
+menu. decrements, comparisons, and log·
+ical operations, but i,; principally used
+with addition,; and increment,; preceding
+a DAA (Decimal Adjust Accumulator)
+instruction.
