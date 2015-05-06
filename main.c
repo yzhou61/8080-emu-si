@@ -33,7 +33,7 @@
 #define F1 (1)
 #define FC (0x01)
 
-#define TRACE(...) //fprintf(stderr, __VA_ARGS__)
+#define TRACE(...) fprintf(stderr, __VA_ARGS__)
 
 #define TRACE_INS(name) TRACE("0x%04lx\t%4s\t", state->pc, #name)
 
@@ -144,7 +144,7 @@ static unsigned char read_8b(struct state_t *state)
 
     state->pc += 1;
 
-    TRACE("0x%04x\t", res);
+    TRACE("0x%02x\t", res);
 
     return res;
 }
@@ -216,10 +216,12 @@ static void JMP(struct state_t *state)
 
 static void JNZ(struct state_t *state)
 {
+    unsigned int pc = read_16b(state);
+
     if ((state->f & FZ) == 0) {
-        state->pc = read_16b(state);
+        state->pc = pc;
     } else {
-        state->pc += 3;
+        ++(state->pc);
     }
 }
 
@@ -266,6 +268,12 @@ static void LDAX(struct state_t *state, unsigned int reg)
 static void MOVM(struct state_t *state, unsigned char src)
 {
     state->mem[state->hl] = src;
+    ++(state->pc);
+}
+
+static void MOVXM(struct state_t *state, unsigned char *dst)
+{
+    *dst = state->mem[state->hl];
     ++(state->pc);
 }
 
@@ -331,12 +339,84 @@ static void PUSH(struct state_t *state, unsigned int reg)
     ++(state->pc);
 }
 
+static void PUSHPSW(struct state_t *state)
+{
+    state->mem[--state->sp] = state->a;
+    state->mem[--state->sp] = state->f;
+
+    ++(state->pc);
+}
+
+static void POP(struct state_t *state, unsigned int *reg)
+{
+    *reg = 0;
+    *reg = state->mem[state->sp++];
+    *reg |= state->mem[state->sp++] << 8;
+
+    ++(state->pc);
+}
+
+static void DAD(struct state_t *state, unsigned int reg)
+{
+    unsigned int res;
+
+    res = reg + state->hl;
+
+    if (res > 0xFFFF) {
+        state->f |= FC;
+    } else {
+        state->f &= ~FC;
+    }
+
+    state->hl = res & 0xFFFF;
+
+    ++(state->pc);
+}
+
+static void XCHG(struct state_t *state)
+{
+    unsigned int tmp;
+
+    tmp = state->hl;
+    state->hl = state->de;
+    state->de = tmp;
+
+    ++(state->pc);
+}
+
+static void OUT(struct state_t *state)
+{
+    // TODO
+    read_8b(state);
+
+    ++(state->pc);
+}
+
+static void RRC(struct state_t *state)
+{
+    unsigned int c = state->a & 0x01;
+
+    state->a >>= 1;
+
+    state->a |= c << 7;
+
+    state->f &= ~FC;
+    state->f |= FC * c;
+
+    ++(state->pc);
+}
+
 static int execute_one(struct state_t *state)
 {
     switch(state->program[state->pc]) {
         case 0x00:
             TRACE_INS("NOP");
             NOP(state);
+            break;
+        case 0x01:
+            TRACE_INS(LXI);
+            TRACE("BC\t");
+            LXI(state, &(state->bc));
             break;
         case 0x05:
             TRACE_INS(DCR);
@@ -348,10 +428,24 @@ static int execute_one(struct state_t *state)
             TRACE("B\t");
             MVI(state, state->b);
             break;
+        case 0x09:
+            TRACE_INS(DAD);
+            TRACE("BC\t");
+            DAD(state, state->bc);
+            break;
+        case 0x0D:
+            TRACE_INS(DCR);
+            TRACE("C\t");
+            DCR(state, state->c);
+            break;
         case 0x0E:
             TRACE_INS(MVI);
             TRACE("C\t");
             MVI(state, state->c);
+            break;
+        case 0x0F:
+            TRACE_INS(RRC);
+            RRC(state);
             break;
         case 0x11:
             TRACE_INS(LXI);
@@ -362,6 +456,11 @@ static int execute_one(struct state_t *state)
             TRACE_INS(INX);
             TRACE("DE\t");
             INX(state, &(state->de));
+            break;
+        case 0x19:
+            TRACE_INS(DAD);
+            TRACE("DE\t");
+            DAD(state, state->de);
             break;
         case 0x1A:
             TRACE_INS(LDAX);
@@ -383,6 +482,11 @@ static int execute_one(struct state_t *state)
             TRACE("H\t");
             MVI(state, state->h);
             break;
+        case 0x29:
+            TRACE_INS(DAD);
+            TRACE("HL\t");
+            DAD(state, state->hl);
+            break;
         case 0x31:
             TRACE_INS(LXI);
             TRACE("SP\t");
@@ -391,6 +495,21 @@ static int execute_one(struct state_t *state)
         case 0x36:
             TRACE_INS(MVIM);
             MVIM(state);
+            break;
+        case 0x56:
+            TRACE_INS(MOVXM);
+            TRACE("D\t");
+            MOVXM(state, state->d);
+            break;
+        case 0x5E:
+            TRACE_INS(MOVXM);
+            TRACE("E\t");
+            MOVXM(state, state->e);
+            break;
+        case 0x66:
+            TRACE_INS(MOVXM);
+            TRACE("H\t");
+            MOVXM(state, state->h);
             break;
         case 0x6F:
             TRACE_INS(MOV);
@@ -402,10 +521,25 @@ static int execute_one(struct state_t *state)
             TRACE("A\t");
             MOVM(state, state->a);
             break;
+        case 0x7A:
+            TRACE_INS(MOV);
+            TRACE("A\tD\t");
+            MOV(state, &(state->a), *state->d);
+            break;
         case 0x7C:
             TRACE_INS(MOV);
             TRACE("A\tH\t");
             MOV(state, &(state->a), *state->h);
+            break;
+        case 0x7E:
+            TRACE_INS(MOVXM);
+            TRACE("A\t");
+            MOVXM(state, &(state->a));
+            break;
+        case 0xC1:
+            TRACE_INS(POP);
+            TRACE("BC\t");
+            POP(state, &(state->bc));
             break;
         case 0xC2:
             TRACE_INS(JNZ);
@@ -415,6 +549,11 @@ static int execute_one(struct state_t *state)
             TRACE_INS(JMP);
             JMP(state);
             break;
+        case 0xC5:
+            TRACE_INS(PUSH);
+            TRACE("B\tC\t");
+            PUSH(state, state->bc);
+            break;
         case 0xC9:
             TRACE_INS(RET);
             RET(state);
@@ -423,15 +562,38 @@ static int execute_one(struct state_t *state)
             TRACE_INS(CAL);
             CAL(state);
             break;
+        case 0xD1:
+            TRACE_INS(POP);
+            TRACE("DE\t");
+            POP(state, &(state->de));
+            break;
+        case 0xD3:
+            TRACE_INS(*OUT);
+            OUT(state);
+            break;
         case 0xD5:
             TRACE_INS(PUSH);
             TRACE("D\tE\t");
             PUSH(state, state->de);
             break;
+        case 0xE1:
+            TRACE_INS(POP);
+            TRACE("H\tL\t");
+            POP(state, &(state->hl));
+            break;
         case 0xE5:
             TRACE_INS(PUSH);
             TRACE("H\tL\t");
             PUSH(state, state->hl);
+            break;
+        case 0xEB:
+            TRACE_INS(XCHG);
+            TRACE("HL\tDE\t");
+            XCHG(state);
+            break;
+        case 0xF5:
+            TRACE_INS(PUSHPSW);
+            PUSHPSW(state);
             break;
         case 0xFE:
             TRACE_INS(CPI);
