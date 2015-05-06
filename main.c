@@ -24,14 +24,14 @@
 #define RAM_START ROM_SIZE
 #define STACK_BOTTOM (0x2400)
 
-#define FS (0x80)
-#define FZ (0x40)
-#define F0 (0)
-#define FA (0x10) // TODO
-//#define F0 (0)
-#define FP (0x04)
-#define F1 (1)
-#define FC (0x01)
+#define FS  (0x80)
+#define FZ  (0x40)
+#define F00 (0x20)
+#define FA  (0x10)
+#define F01 (0x08)
+#define FP  (0x04)
+#define F1  (0x02)
+#define FC  (0x01)
 
 #define TRACE(...) fprintf(stderr, __VA_ARGS__)
 
@@ -140,9 +140,9 @@ static unsigned char read_8b(struct state_t *state)
 {
     unsigned char res;
 
-    res = state->program[state->pc + 1];
+    ++(state->pc);
 
-    state->pc += 1;
+    res = state->program[state->pc];
 
     TRACE("0x%02x\t", res);
 
@@ -153,7 +153,7 @@ static unsigned int read_16b(struct state_t *state)
 {
     unsigned int res;
 
-    res = state->program[state->pc + 2] * 256 + state->program[state->pc + 1];
+    res = (state->program[state->pc + 2] << 8) + state->program[state->pc + 1];
 
     state->pc += 2;
 
@@ -180,25 +180,25 @@ static unsigned char parity(unsigned char b)
     b = ((b & 0xAA) >> 1) + (b & 0x55);
     b = ((b & 0xCC) >> 2) + (b & 0x33);
     b = ((b & 0xF0) >> 4) + (b & 0x0F);
-    return b;
+    return (b & 0x01) == 0 ? 1 : 0;
 }
 
-static void set_flags(struct state_t *state, unsigned char res)
+static void set_ZSP(struct state_t *state, unsigned char res)
 {
     if (0 == res) {
-        state->f |= FZ;
+        state->f |=  FZ;
     } else {
         state->f &= ~FZ;
     }
 
-    if (res >= 0x80) {
-        state->f |= FS;
+    if ((res & 0x80) != 0) {
+        state->f |=  FS;
     } else {
         state->f &= ~FS;
     }
 
-    if ((parity(res) & 0x01) == 0) {
-        state->f |= FP;
+    if (parity(res)) {
+        state->f |=  FP;
     } else {
         state->f &= ~FP;
     }
@@ -243,8 +243,8 @@ static void CAL(struct state_t *state)
 
     pc = read_16b(state);
     ++(state->pc);
-    state->mem[--state->sp] = (state->pc >> 8) & 0x00FF;
-    state->mem[--state->sp] = state->pc & 0x00FF;
+    state->mem[--state->sp] = ((state->pc >> 8) & 0x00FF);
+    state->mem[--state->sp] = (state->pc & 0x00FF);
 
     state->pc = pc;
 }
@@ -254,7 +254,7 @@ static void RET(struct state_t *state)
     unsigned int pc = 0;
 
     pc = state->mem[state->sp++];
-    pc |= state->mem[state->sp++] << 8;
+    pc |= (state->mem[state->sp++] << 8);
 
     state->pc = pc;
 }
@@ -296,28 +296,19 @@ static void INX(struct state_t *state, unsigned int *reg)
     ++(state->pc);
 }
 
-static unsigned char sub(struct state_t *state, unsigned int a, unsigned int b)
-{
-    if (a >= b) {
-        state->f &= ~FC;
-    } else {
-        state->f |= FC;
-    }
-
-    a -= b;
-
-    set_flags(state, a);
-
-    return a;
-}
-
 static void DCR(struct state_t *state, unsigned char *reg)
 {
-    unsigned char value = *reg;
+    unsigned int ac = ((*reg) & 0x08);
 
-    value = sub(state, value, 1);
+    --(*reg);
 
-    *reg = value;
+    set_ZSP(state, *reg);
+
+    if (((*reg) & 0x08) != ac) {
+        state->f |=  FA;
+    } else {
+        state->f &= ~FA;
+    }
 
     ++(state->pc);
 }
@@ -326,15 +317,23 @@ static void CPI(struct state_t *state)
 {
     unsigned char i = read_8b(state);
 
-    state->a = sub(state, state->a, i);
+    if (state->a < i) {
+        state->f |=  FC;
+    } else {
+        state->f &= ~FC;
+    }
+
+    state->a -= i;
+
+    set_ZSP(state, state->a);
 
     ++(state->pc);
 }
 
 static void PUSH(struct state_t *state, unsigned int reg)
 {
-    state->mem[--state->sp] = (reg >> 8) & 0x00FF;
-    state->mem[--state->sp] = reg & 0x00FF;
+    state->mem[--state->sp] = ((reg >> 8) & 0x00FF);
+    state->mem[--state->sp] = (reg & 0x00FF);
 
     ++(state->pc);
 }
@@ -363,12 +362,12 @@ static void DAD(struct state_t *state, unsigned int reg)
     res = reg + state->hl;
 
     if (res > 0xFFFF) {
-        state->f |= FC;
+        state->f |=  FC;
     } else {
         state->f &= ~FC;
     }
 
-    state->hl = res & 0xFFFF;
+    state->hl = (res & 0xFFFF);
 
     ++(state->pc);
 }
@@ -394,14 +393,14 @@ static void OUT(struct state_t *state)
 
 static void RRC(struct state_t *state)
 {
-    unsigned int c = state->a & 0x01;
+    unsigned int c = (state->a & 0x01);
 
     state->a >>= 1;
 
     state->a |= c << 7;
 
     state->f &= ~FC;
-    state->f |= FC * c;
+    state->f |= (FC * c);
 
     ++(state->pc);
 }
@@ -418,6 +417,11 @@ static int execute_one(struct state_t *state)
             TRACE("BC\t");
             LXI(state, &(state->bc));
             break;
+        case 0x03:
+            TRACE_INS(INX);
+            TRACE("BC\t");
+            INX(state, &(state->bc));
+            break;
         case 0x05:
             TRACE_INS(DCR);
             TRACE("B\t");
@@ -432,6 +436,11 @@ static int execute_one(struct state_t *state)
             TRACE_INS(DAD);
             TRACE("BC\t");
             DAD(state, state->bc);
+            break;
+        case 0x0A:
+            TRACE_INS(LDAX);
+            TRACE("BC\t");
+            LDAX(state, state->bc);
             break;
         case 0x0D:
             TRACE_INS(DCR);
@@ -457,6 +466,16 @@ static int execute_one(struct state_t *state)
             TRACE("DE\t");
             INX(state, &(state->de));
             break;
+        case 0x15:
+            TRACE_INS(DCR);
+            TRACE("D\t");
+            DCR(state, state->d);
+            break;
+        case 0x16:
+            TRACE_INS(MVI);
+            TRACE("D\t");
+            MVI(state, state->d);
+            break;
         case 0x19:
             TRACE_INS(DAD);
             TRACE("DE\t");
@@ -466,6 +485,16 @@ static int execute_one(struct state_t *state)
             TRACE_INS(LDAX);
             TRACE("DE\t");
             LDAX(state, state->de);
+            break;
+        case 0x1D:
+            TRACE_INS(DCR);
+            TRACE("E\t");
+            DCR(state, state->e);
+            break;
+        case 0x1E:
+            TRACE_INS(MVI);
+            TRACE("E\t");
+            MVI(state, state->e);
             break;
         case 0x21:
             TRACE_INS(LXI);
@@ -486,6 +515,11 @@ static int execute_one(struct state_t *state)
             TRACE_INS(DAD);
             TRACE("HL\t");
             DAD(state, state->hl);
+            break;
+        case 0x2E:
+            TRACE_INS(MVI);
+            TRACE("L\t");
+            MVI(state, state->l);
             break;
         case 0x31:
             TRACE_INS(LXI);
@@ -612,7 +646,7 @@ static int execute_one(struct state_t *state)
 
 static int execute(struct state_t *state)
 {
-    while (stop == 0 && state->pc < state->program_size) {
+    while (stop <= 1 && state->pc < state->program_size) {
         int res = execute_one(state);
 
         if (res < 0) {
@@ -628,7 +662,7 @@ static int init_state(struct state_t *state, const char *filename)
     state->pc = 0;
     state->sp = 0x2400;
     state->a = 0;
-    state->f = 0;
+    state->f = F1;
     state->bc = 0;
     state->de = 0;
     state->hl = 0;
