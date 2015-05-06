@@ -37,7 +37,8 @@
 
 #define TRACE_INS(name) TRACE("0x%04lx\t%4s\t", state->pc, #name)
 
-#define TRACE_STATE() TRACE("\t\t\t\tpc:0x%04lx,sp:0x%04x,a:0x%02x,b:0x%02x,c:0x%02x,d:0x%02x,e:0x%02x,f:"BYTETOBINARYPATTERN",h:0x%02x,l:0x%02x)\n", \
+#define TRACE_STATE() TRACE("\t\t\t\tpc\tsp\ta\tb\tc\td\te\tSZ0A0P1C\th\tl\n"); \
+                      TRACE("\t\t\t\t0x%04lx\t0x%04x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t"BYTETOBINARYPATTERN"\t0x%02x\t0x%02x\n", \
                               state->pc, state->sp, state->a, *(state->b), *(state->c), *(state->d), *(state->e), BYTETOBINARY(state->f), *(state->h), *(state->l)); \
                       print_stack(state)
 
@@ -259,6 +260,15 @@ static void RET(struct state_t *state)
     state->pc = pc;
 }
 
+static void LDA(struct state_t *state)
+{
+    unsigned int mem = read_16b(state);
+
+    state->a = state->mem[mem];
+
+    ++(state->pc);
+}
+
 static void LDAX(struct state_t *state, unsigned int reg)
 {
     state->a = state->mem[reg];
@@ -355,6 +365,14 @@ static void POP(struct state_t *state, unsigned int *reg)
     ++(state->pc);
 }
 
+static void POPPSW(struct state_t *state)
+{
+    state->f = state->mem[state->sp++];
+    state->a = state->mem[state->sp++];
+
+    ++(state->pc);
+}
+
 static void DAD(struct state_t *state, unsigned int reg)
 {
     unsigned int res;
@@ -401,6 +419,54 @@ static void RRC(struct state_t *state)
 
     state->f &= ~FC;
     state->f |= (FC * c);
+
+    ++(state->pc);
+}
+
+static void ANI(struct state_t *state)
+{
+    unsigned char b = read_8b(state);
+
+    state->a &= b;
+
+    set_ZSP(state, state->a);
+
+    state->f &= ~FC;
+    state->f &= ~FA;
+
+    ++(state->pc);
+}
+
+static void ADI(struct state_t *state)
+{
+    unsigned char b = read_8b(state);
+    unsigned int ac = (state->a & 0x08);
+    unsigned int sum;
+
+    sum = state->a + b;
+    state->a = (sum & 0xFF);
+
+    set_ZSP(state, state->a);
+
+    if (sum > 0xFF) {
+        state->f |=  FC;
+    } else {
+        state->f &= ~FC;
+    }
+
+    if ((sum & 0x08) != ac) {
+        state->f |=  FA;
+    } else {
+        state->f &= ~FA;
+    }
+
+    ++(state->pc);
+}
+
+static void STA(struct state_t *state)
+{
+    unsigned int mem = read_16b(state);
+    state->mem[mem] = state->a;
 
     ++(state->pc);
 }
@@ -526,9 +592,22 @@ static int execute_one(struct state_t *state)
             TRACE("SP\t");
             LXI(state, &(state->sp));
             break;
+        case 0x32:
+            TRACE_INS(STA);
+            STA(state);
+            break;
         case 0x36:
             TRACE_INS(MVIM);
             MVIM(state);
+            break;
+        case 0x3A:
+            TRACE_INS(LDA);
+            LDA(state);
+            break;
+        case 0x3E:
+            TRACE_INS(MVI);
+            TRACE("A\t");
+            MVI(state, &(state->a));
             break;
         case 0x56:
             TRACE_INS(MOVXM);
@@ -560,6 +639,11 @@ static int execute_one(struct state_t *state)
             TRACE("A\tD\t");
             MOV(state, &(state->a), *state->d);
             break;
+        case 0x7B:
+            TRACE_INS(MOV);
+            TRACE("A\tE\t");
+            MOV(state, &(state->a), *state->e);
+            break;
         case 0x7C:
             TRACE_INS(MOV);
             TRACE("A\tH\t");
@@ -587,6 +671,10 @@ static int execute_one(struct state_t *state)
             TRACE_INS(PUSH);
             TRACE("B\tC\t");
             PUSH(state, state->bc);
+            break;
+        case 0xC6:
+            TRACE_INS(ADI);
+            ADI(state);
             break;
         case 0xC9:
             TRACE_INS(RET);
@@ -620,10 +708,18 @@ static int execute_one(struct state_t *state)
             TRACE("H\tL\t");
             PUSH(state, state->hl);
             break;
+        case 0xE6:
+            TRACE_INS(ANI);
+            ANI(state);
+            break;
         case 0xEB:
             TRACE_INS(XCHG);
             TRACE("HL\tDE\t");
             XCHG(state);
+            break;
+        case 0xF1:
+            TRACE_INS(POPPSW);
+            POPPSW(state);
             break;
         case 0xF5:
             TRACE_INS(PUSHPSW);
@@ -646,7 +742,7 @@ static int execute_one(struct state_t *state)
 
 static int execute(struct state_t *state)
 {
-    while (stop <= 1 && state->pc < state->program_size) {
+    while (stop <= 0 && state->pc < state->program_size) {
         int res = execute_one(state);
 
         if (res < 0) {
