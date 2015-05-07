@@ -33,7 +33,7 @@
 #define F1  (0x02)
 #define FC  (0x01)
 
-#define TRACE(...) fprintf(stderr, __VA_ARGS__)
+#define TRACE(...) //fprintf(stderr, __VA_ARGS__)
 
 #define TRACE_INS(name) TRACE("0x%04lx\t%4s\t", state->pc, #name)
 
@@ -789,14 +789,23 @@ static int execute_one(struct state_t *state)
     return 0;
 }
 
+static unsigned char *display;
+static pthread_mutex_t mutex;
+
 static int execute(struct state_t *state)
 {
+    pthread_mutex_lock(&mutex);
+
     while (stop <= 0 && state->pc < state->program_size) {
         int res = execute_one(state);
 
         if (res < 0) {
+            pthread_mutex_unlock(&mutex);
             return -1;
         }
+        pthread_mutex_unlock(&mutex);
+        usleep(1000);
+        pthread_mutex_lock(&mutex);
     }
 
     return 0;
@@ -842,6 +851,36 @@ static void deinit_state(struct state_t *state)
     free(state->mem);
 }
 
+void display_loop(void)
+{
+    pthread_mutex_lock(&mutex);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_POINTS);
+    for (i = 0; i < 256; ++i) {
+        for (j = 0; j < 224; ++j) {
+            if (
+        glVertex3f(0.0, 0.0, 0.0);
+        glVertex3f(0.5, 0.0, 0.0);
+        glVertex3f(0.5, 0.5, 0.0);
+        glVertex3f(0.0, 0.5, 0.0);
+    glEnd();
+    glFlush();
+    pthread_mutex_unlock(&mutex);
+}
+
+static void start_gl_loop(struct state_t *state)
+{
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE);
+    glutInitWindowSize(256, 224);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("Space Invaders");
+
+    display = state->mem + 0x2400;
+    glutDisplayFunc(display_loop);
+    glutMainLoop();
+}
+
 int main(int argc, char **argv)
 {
     struct options_t options;
@@ -859,6 +898,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "init_state() failed\n");
         exit(1);
     }
+
+    pthread_mutex_init(&mutex, NULL);
+
+    start_gl_loop(&state);
 
     res = execute(&state);
 
