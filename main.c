@@ -37,9 +37,9 @@
 
 #define TRACE_INS(name) TRACE("0x%04lx\t%4s\t", state->pc, #name)
 
-#define TRACE_STATE() TRACE("\t\t\t\tpc\tsp\ta\tb\tc\td\te\tSZ0A0P1C\th\tl\n"); \
-                      TRACE("\t\t\t\t0x%04lx\t0x%04x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t"BYTETOBINARYPATTERN"\t0x%02x\t0x%02x\n", \
-                              state->pc, state->sp, state->a, *(state->b), *(state->c), *(state->d), *(state->e), BYTETOBINARY(state->f), *(state->h), *(state->l)); \
+#define TRACE_STATE() TRACE("\t\t\t\tpc\tsp\ta\tb\tc\td\te\tSZ0A0P1C\th\tl\tINTR\n"); \
+                      TRACE("\t\t\t\t0x%04lx\t0x%04x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t"BYTETOBINARYPATTERN"\t0x%02x\t0x%02x\t%d\n", \
+                              state->pc, state->sp, state->a, *(state->b), *(state->c), *(state->d), *(state->e), BYTETOBINARY(state->f), *(state->h), *(state->l), state->intr); \
                       print_stack(state)
 
 #define BYTETOBINARYPATTERN "%d%d%d%d%d%d%d%d"
@@ -74,6 +74,7 @@ struct state_t {
     unsigned char *h;
     unsigned char *l;
     unsigned char *mem;
+    unsigned char intr;
 };
 
 static int stop = 0;
@@ -401,9 +402,9 @@ static void XCHG(struct state_t *state)
     ++(state->pc);
 }
 
+// TODO
 static void OUT(struct state_t *state)
 {
-    // TODO
     read_8b(state);
 
     ++(state->pc);
@@ -423,16 +424,30 @@ static void RRC(struct state_t *state)
     ++(state->pc);
 }
 
+static unsigned char and(struct state_t *state, unsigned char a, unsigned char b)
+{
+    unsigned char res = a & b;
+
+    set_ZSP(state, res);
+
+    state->f &= ~FC;
+    state->f &= ~FA;
+
+    return res;
+}
+
 static void ANI(struct state_t *state)
 {
     unsigned char b = read_8b(state);
 
-    state->a &= b;
+    state->a = and(state, state->a, b);
 
-    set_ZSP(state, state->a);
+    ++(state->pc);
+}
 
-    state->f &= ~FC;
-    state->f &= ~FA;
+static void ANA(struct state_t *state, unsigned char reg)
+{
+    state->a = and(state, state->a, reg);
 
     ++(state->pc);
 }
@@ -467,6 +482,26 @@ static void STA(struct state_t *state)
 {
     unsigned int mem = read_16b(state);
     state->mem[mem] = state->a;
+
+    ++(state->pc);
+}
+
+static void XRA(struct state_t *state, unsigned char reg)
+{
+    state->a ^= reg;
+
+    set_ZSP(state, state->a);
+
+    state->f &= ~FC;
+    state->f &= ~FA;
+
+    ++(state->pc);
+}
+
+// TODO
+static void EI(struct state_t *state)
+{
+    state->intr = 1;
 
     ++(state->pc);
 }
@@ -654,6 +689,16 @@ static int execute_one(struct state_t *state)
             TRACE("A\t");
             MOVXM(state, &(state->a));
             break;
+        case 0xA7:
+            TRACE_INS(ANA);
+            TRACE("A\t");
+            ANA(state, state->a);
+            break;
+        case 0xAF:
+            TRACE_INS(XRA);
+            TRACE("A\t");
+            XRA(state, state->a);
+            break;
         case 0xC1:
             TRACE_INS(POP);
             TRACE("BC\t");
@@ -725,6 +770,10 @@ static int execute_one(struct state_t *state)
             TRACE_INS(PUSHPSW);
             PUSHPSW(state);
             break;
+        case 0xFB:
+            TRACE_INS(EI);
+            EI(state);
+            break;
         case 0xFE:
             TRACE_INS(CPI);
             CPI(state);
@@ -755,6 +804,7 @@ static int execute(struct state_t *state)
 
 static int init_state(struct state_t *state, const char *filename)
 {
+    state->intr = 0;
     state->pc = 0;
     state->sp = 0x2400;
     state->a = 0;
