@@ -6,26 +6,12 @@
 #include <GL/glut.h>
 #include <time.h>
 
-/*
- * Memory map:
-  ROM
-  $0000-$07ff:    invaders.h
-  $0800-$0fff:    invaders.g
-  $1000-$17ff:    invaders.f
-  $1800-$1fff:    invaders.e
-
-  RAM
-  $2000-$23ff:    work RAM
-  $2400-$3fff:    video RAM
-
-  $4000-:     RAM mirror
-*/
-
 #define MEM_SIZE (0x4000)
 #define ROM_START (0x0000)
 #define ROM_SIZE (0x2000)
 #define RAM_START ROM_SIZE
 #define STACK_BOTTOM (0x2400)
+#define DISPLAY_ADDRESS (0x2400)
 
 #define FS  (0x80)
 #define FZ  (0x40)
@@ -35,6 +21,25 @@
 #define FP  (0x04)
 #define F1  (0x02)
 #define FC  (0x01)
+
+/*
+ * The display is 256*224 in portrait mode at 59.94Hz
+ * Monochrome, one bit per pixel, 32B per scan line.
+ *
+ * According to NTSC, among the 262 scan lines, 224 is used
+ * and the rest is vblank. It generates interrupt (1)
+ * before vblank and interrupt (2) after it. Combining this
+ * with the 2MHz frequency of the 8080, this gives us:
+ *
+ * ns per frame: 1e9/59.94 ~= 16683350ns
+ * cycles per frame: (1/59.94) / (1/2M) ~= 33367
+ * cycles before vblank: 33367 * (224/262) ~= 28527
+ */
+#define DISPLAY_WIDTH  (224)
+#define DISPLAY_HEIGHT (256)
+#define CYCLES_BEFORE_VBLANK (28527)
+#define CYCLES_AFTER_VBLANK (4839)
+#define NS_PER_FRAME (16683350)
 
 #define TRACE(...) //fprintf(stderr, __VA_ARGS__)
 
@@ -102,6 +107,14 @@ static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, 
                             { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
                             { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
                             { 111, 10, 10, 4, 117, 11, 7, 11, 111, 5, 10, 4, 117, 17, 7, 11, }, };
+
+static unsigned long long get_ns()
+{
+    struct timespec ts;
+
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return ts.tv_sec * 1000000000 + ts.tv_nsec;
+}
 
 static void usage()
 {
@@ -319,6 +332,13 @@ static int RZ(struct state_t *state)
     int z = ((state->f & FZ) > 0);
     return_if(state, z);
     return z;
+}
+
+static int RC(struct state_t *state)
+{
+    int c = ((state->f & FC) > 0);
+    return_if(state, c);
+    return c;
 }
 
 static int RNZ(struct state_t *state)
@@ -617,6 +637,18 @@ static int EI(struct state_t *state)
     return 1;
 }
 
+static int STC(struct state_t *state)
+{
+    state->f ^= FC;
+    ++(state->pc);
+    return 1;
+}
+
+static int ORA(struct state_t *state)
+{
+
+}
+
 static int execute_one(struct state_t *state)
 {
     unsigned char instruction;
@@ -761,6 +793,10 @@ static int execute_one(struct state_t *state)
             TRACE_INS(MVIM);
             taken = MVIM(state);
             break;
+        case 0x37:
+            TRACE_INS(STC);
+            taken = STC(state);
+            break;
         case 0x3A:
             TRACE_INS(LDA);
             taken = LDA(state);
@@ -775,20 +811,40 @@ static int execute_one(struct state_t *state)
             TRACE("A\t");
             taken = MVI(state, &(state->a));
             break;
+        case 0x4F:
+            TRACE_INS(MOV);
+            TRACE("C\tA\t");
+            taken = MOV(state, state->c, state->a);
+            break;
         case 0x56:
             TRACE_INS(MOVXM);
             TRACE("D\t");
             taken = MOVXM(state, state->d);
+            break;
+        case 0x57:
+            TRACE_INS(MOV);
+            TRACE("D\tA\t");
+            taken = MOV(state, state->d, state->a);
             break;
         case 0x5E:
             TRACE_INS(MOVXM);
             TRACE("E\t");
             taken = MOVXM(state, state->e);
             break;
+        case 0x5F:
+            TRACE_INS(MOV);
+            TRACE("E\tA\t");
+            taken = MOV(state, state->e, state->a);
+            break;
         case 0x66:
             TRACE_INS(MOVXM);
             TRACE("H\t");
             taken = MOVXM(state, state->h);
+            break;
+        case 0x67:
+            TRACE_INS(MOV);
+            TRACE("H\tA\t");
+            taken = MOV(state, state->h, state->a);
             break;
         case 0x6F:
             TRACE_INS(MOV);
@@ -814,6 +870,11 @@ static int execute_one(struct state_t *state)
             TRACE_INS(MOV);
             TRACE("A\tH\t");
             taken = MOV(state, &(state->a), *state->h);
+            break;
+        case 0x7D:
+            TRACE_INS(MOV);
+            TRACE("A\tL\t");
+            taken = MOV(state, &(state->a), *state->l);
             break;
         case 0x7E:
             TRACE_INS(MOVXM);
@@ -892,6 +953,10 @@ static int execute_one(struct state_t *state)
             TRACE("D\tE\t");
             taken = PUSH(state, state->de);
             break;
+        case 0xD8:
+            TRACE_INS(RC);
+            taken = RC(state);
+            break;
         case 0xDA:
             TRACE_INS(JC);
             taken = JC(state);
@@ -966,6 +1031,7 @@ static void generate_intr(struct state_t *state, int intr_num)
 
 static unsigned char *display;
 static struct state_t state;
+static unsigned long long last_duration;
 
 static int execute(struct state_t *state, int cycles)
 {
@@ -983,7 +1049,7 @@ static int execute(struct state_t *state, int cycles)
     return 0;
 }
 
-static int init_state(struct state_t *state, const char *filename)
+static void init_state(struct state_t *state, const char *filename)
 {
     state->intr = 0;
     state->pc = 0;
@@ -1012,8 +1078,6 @@ static int init_state(struct state_t *state, const char *filename)
         perror("mprotect() failed");
         ABORT(("%p\n", state->program));
     }
-
-    return 0;
 }
 
 static void deinit_state(struct state_t *state)
@@ -1021,22 +1085,10 @@ static void deinit_state(struct state_t *state)
     free(state->mem);
 }
 
-void display_loop()
+static void draw()
 {
     int i, j;
-    struct timespec ts;
-    unsigned long long last;
 
-    clock_gettime(CLOCK_REALTIME, &ts);
-    last = ts.tv_sec * 1000000000 + ts.tv_nsec;
-
-    execute(&state, 28527);
-
-    if (state.intr) {
-        generate_intr(&state, 1);
-    }
-
-    /*
     glClear(GL_COLOR_BUFFER_BIT);
     glBegin(GL_POINTS);
     for (i = 0; i < 256; ++i) {
@@ -1050,25 +1102,46 @@ void display_loop()
     }
     glEnd();
     glFlush();
-    */
+}
 
-    execute(&state, 4839);
+static void display_loop()
+{
+    unsigned long long now, then;
+
+    then = get_ns();
+
+    execute(&state, CYCLES_BEFORE_VBLANK);
+
+    if (state.intr) {
+        generate_intr(&state, 1);
+    }
+
+    draw();
+
+    execute(&state, CYCLES_AFTER_VBLANK);
+
     if (state.intr) {
         generate_intr(&state, 2);
     }
 
-    clock_gettime(CLOCK_REALTIME, &ts);
-    fprintf(stderr, "spent %llu on this frame\n", ts.tv_sec * 1000000000 + ts.tv_nsec - last);
+    printf("Last frame took %llu to render\n", last_duration);
+
+    now = get_ns();
+    last_duration = now - then;
+
+    if (last_duration < NS_PER_FRAME) {
+        usleep((NS_PER_FRAME - last_duration) / 1000);
+    }
 }
 
-static void *start_gl_loop(int argc, char **argv)
+static void start_gl_loop(int argc, char **argv)
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE);
-    glutInitWindowSize(256, 224);
+    glutInitWindowSize(DISPLAY_WIDTH, DISPLAY_HEIGHT);
     glutCreateWindow("Space Invaders");
 
-    display = state.mem + 0x2400;
+    display = state.mem + DISPLAY_ADDRESS;
     glutIdleFunc(display_loop);
     glutMainLoop();
 }
@@ -1084,9 +1157,7 @@ int main(int argc, char **argv)
         ABORT(("Invalid options.\n"));
     }
 
-    if (0 > init_state(&state, options.bin_name)) {
-        ABORT(("init_state() failed\n"));
-    }
+    init_state(&state, options.bin_name);
 
     start_gl_loop(argc, argv);
 
