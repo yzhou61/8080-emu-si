@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <GL/gl.h>
+#include <GL/glut.h>
+#include <time.h>
 
 /*
  * Memory map:
@@ -211,20 +214,35 @@ static void NOP(struct state_t *state)
     ++(state->pc);
 }
 
-static void JMP(struct state_t *state)
-{
-    state->pc = read_16b(state);
-}
-
-static void JNZ(struct state_t *state)
+static void jump_if(struct state_t *state, unsigned char c)
 {
     unsigned int pc = read_16b(state);
 
-    if ((state->f & FZ) == 0) {
+    if (c != 0) {
         state->pc = pc;
     } else {
         ++(state->pc);
     }
+}
+
+static void JMP(struct state_t *state)
+{
+    jump_if(state, 1);
+}
+
+static void JNZ(struct state_t *state)
+{
+    jump_if(state, (state->f & FZ) == 0);
+}
+
+static void JC(struct state_t *state)
+{
+    jump_if(state, (state->f & FC) > 0);
+}
+
+static void JZ(struct state_t *state)
+{
+    jump_if(state, (state->f & FZ) > 0);
 }
 
 static void LXI(struct state_t *state, unsigned int *reg)
@@ -251,14 +269,33 @@ static void CAL(struct state_t *state)
     state->pc = pc;
 }
 
+static void return_if(struct state_t *state, unsigned char c)
+{
+    if (c != 0) {
+        unsigned int pc = 0;
+
+        pc = state->mem[state->sp++];
+        pc |= (state->mem[state->sp++] << 8);
+
+        state->pc = pc;
+    } else {
+        ++(state->pc);
+    }
+}
+
 static void RET(struct state_t *state)
 {
-    unsigned int pc = 0;
+    return_if(state, 1);
+}
 
-    pc = state->mem[state->sp++];
-    pc |= (state->mem[state->sp++] << 8);
+static void RZ(struct state_t *state)
+{
+    return_if(state, (state->f & FZ) > 0);
+}
 
-    state->pc = pc;
+static void RNZ(struct state_t *state)
+{
+    return_if(state, (state->f & FZ) == 0);
 }
 
 static void LDA(struct state_t *state)
@@ -307,20 +344,32 @@ static void INX(struct state_t *state, unsigned int *reg)
     ++(state->pc);
 }
 
-static void DCR(struct state_t *state, unsigned char *reg)
+static unsigned char decrement(struct state_t *state, unsigned char i)
 {
-    unsigned int ac = ((*reg) & 0x08);
+    unsigned int ac = (i & 0x08);
 
-    --(*reg);
+    --i;
 
-    set_ZSP(state, *reg);
+    set_ZSP(state, i);
 
-    if (((*reg) & 0x08) != ac) {
+    if ((i & 0x08) != ac) {
         state->f |=  FA;
     } else {
         state->f &= ~FA;
     }
 
+    return i;
+}
+
+static void DCR_M(struct state_t *state)
+{
+    state->mem[state->hl] = decrement(state, state->mem[state->hl]);
+    ++(state->pc);
+}
+
+static void DCR(struct state_t *state, unsigned char *reg)
+{
+    *reg = decrement(state, *reg);
     ++(state->pc);
 }
 
@@ -398,6 +447,14 @@ static void XCHG(struct state_t *state)
     tmp = state->hl;
     state->hl = state->de;
     state->de = tmp;
+
+    ++(state->pc);
+}
+
+// TODO
+static void IN(struct state_t *state)
+{
+    read_8b(state);
 
     ++(state->pc);
 }
@@ -631,6 +688,11 @@ static int execute_one(struct state_t *state)
             TRACE_INS(STA);
             STA(state);
             break;
+        case 0x35:
+            TRACE_INS(DCR);
+            TRACE("M\t");
+            DCR_M(state);
+            break;
         case 0x36:
             TRACE_INS(MVIM);
             MVIM(state);
@@ -638,6 +700,11 @@ static int execute_one(struct state_t *state)
         case 0x3A:
             TRACE_INS(LDA);
             LDA(state);
+            break;
+        case 0x3D:
+            TRACE_INS(DCR);
+            TRACE("A\t");
+            DCR(state, &(state->a));
             break;
         case 0x3E:
             TRACE_INS(MVI);
@@ -699,6 +766,12 @@ static int execute_one(struct state_t *state)
             TRACE("A\t");
             XRA(state, state->a);
             break;
+            /*
+        case 0xC0:
+            TRACE_INS(RNZ);
+            RNZ(state);
+            break;
+            */
         case 0xC1:
             TRACE_INS(POP);
             TRACE("BC\t");
@@ -721,9 +794,17 @@ static int execute_one(struct state_t *state)
             TRACE_INS(ADI);
             ADI(state);
             break;
+        case 0xC8:
+            TRACE_INS(RZ);
+            RZ(state);
+            break;
         case 0xC9:
             TRACE_INS(RET);
             RET(state);
+            break;
+        case 0xCA:
+            TRACE_INS(JZ);
+            JZ(state);
             break;
         case 0xCD:
             TRACE_INS(CAL);
@@ -742,6 +823,14 @@ static int execute_one(struct state_t *state)
             TRACE_INS(PUSH);
             TRACE("D\tE\t");
             PUSH(state, state->de);
+            break;
+        case 0xDA:
+            TRACE_INS(JC);
+            JC(state);
+            break;
+        case 0xDB:
+            TRACE_INS(*IN);
+            IN(state);
             break;
         case 0xE1:
             TRACE_INS(POP);
@@ -789,23 +878,46 @@ static int execute_one(struct state_t *state)
     return 0;
 }
 
+static void generate_intr(struct state_t *state, int intr_num)
+{
+    state->mem[--state->sp] = ((state->pc >> 8) & 0x00FF);
+    state->mem[--state->sp] = (state->pc & 0x00FF);
+
+    state->pc = 0x08 * intr_num;
+}
+
 static unsigned char *display;
 static pthread_mutex_t mutex;
 
 static int execute(struct state_t *state)
 {
-    pthread_mutex_lock(&mutex);
+    struct timespec ts;
+    unsigned long long last, now, last_screen;
+
+    clock_gettime(CLOCK_REALTIME, &ts);
+    last = ts.tv_sec * 1000000000 + ts.tv_nsec;
+    last_screen = last;
 
     while (stop <= 0 && state->pc < state->program_size) {
         int res = execute_one(state);
 
         if (res < 0) {
-            pthread_mutex_unlock(&mutex);
             return -1;
         }
-        pthread_mutex_unlock(&mutex);
-        usleep(1000);
-        pthread_mutex_lock(&mutex);
+
+        if (now - last_screen >= 16666666) {
+            if (state->intr) {
+                generate_intr(state, 2);
+            }
+            last_screen = now;
+        }
+
+        clock_gettime(CLOCK_REALTIME, &ts);
+        now = ts.tv_sec * 1000000000 + ts.tv_nsec;
+
+        printf("took %llu\n", now - last);
+        last = now;
+
     }
 
     return 0;
@@ -851,33 +963,37 @@ static void deinit_state(struct state_t *state)
     free(state->mem);
 }
 
-void display_loop(void)
+void display_loop(int _ignored)
 {
-    pthread_mutex_lock(&mutex);
+    int i, j;
+
     glClear(GL_COLOR_BUFFER_BIT);
     glBegin(GL_POINTS);
+    pthread_mutex_lock(&mutex);
     for (i = 0; i < 256; ++i) {
         for (j = 0; j < 224; ++j) {
-            if (
-        glVertex3f(0.0, 0.0, 0.0);
-        glVertex3f(0.5, 0.0, 0.0);
-        glVertex3f(0.5, 0.5, 0.0);
-        glVertex3f(0.0, 0.5, 0.0);
+            int x = i / 8;
+            int b = i % 8;
+            if ((display[x * 64 + j] & (0x01 << b)) != 0) {
+                glVertex3f(((float)i / 256 * 2 - 1.0f), ((float)j / 224 * 2 - 1.0f), 0.0);
+            }
+        }
+    }
+    pthread_mutex_unlock(&mutex);
     glEnd();
     glFlush();
-    pthread_mutex_unlock(&mutex);
+    glutTimerFunc(16, display_loop, 0);
 }
 
-static void start_gl_loop(struct state_t *state)
+static void *start_gl_loop(struct state_t *state)
 {
-    glutInit(&argc, argv);
+
     glutInitDisplayMode(GLUT_SINGLE);
     glutInitWindowSize(256, 224);
-    glutInitWindowPosition(100, 100);
     glutCreateWindow("Space Invaders");
 
     display = state->mem + 0x2400;
-    glutDisplayFunc(display_loop);
+    glutTimerFunc(16, display_loop, 0);
     glutMainLoop();
 }
 
@@ -887,6 +1003,7 @@ int main(int argc, char **argv)
     unsigned char *program = NULL;
     int res;
     struct state_t state;
+    pthread_t gl_thread;
 
     if (parse_options(argc, argv, &options) != 0) {
         fprintf(stderr, "Invalid options.\n");
@@ -901,7 +1018,8 @@ int main(int argc, char **argv)
 
     pthread_mutex_init(&mutex, NULL);
 
-    start_gl_loop(&state);
+    glutInit(&argc, argv);
+    pthread_create(&gl_thread, NULL, start_gl_loop, &state);
 
     res = execute(&state);
 
