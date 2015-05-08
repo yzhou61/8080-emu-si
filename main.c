@@ -37,6 +37,7 @@
  */
 #define DISPLAY_WIDTH  (224)
 #define DISPLAY_HEIGHT (256)
+#define BYTES_PER_SCANLINE (DISPLAY_HEIGHT / 8)
 #define CYCLES_BEFORE_VBLANK (28527)
 #define CYCLES_AFTER_VBLANK (4839)
 #define NS_PER_FRAME (16683350)
@@ -1053,7 +1054,7 @@ static void init_state(struct state_t *state, const char *filename)
 {
     state->intr = 0;
     state->pc = 0;
-    state->sp = 0x2400;
+    state->sp = STACK_BOTTOM;
     state->a = 0;
     state->f = F1;
     state->bc = 0;
@@ -1087,19 +1088,22 @@ static void deinit_state(struct state_t *state)
 
 static void draw()
 {
-    int i, j;
+    int i, j, l;
 
     glClear(GL_COLOR_BUFFER_BIT);
     glBegin(GL_POINTS);
-    for (i = 0; i < 256; ++i) {
-        for (j = 0; j < 224; ++j) {
-            int x = i / 8;
-            int b = i % 8;
-            if ((display[x + j * 32] & (0x01 << b)) != 0) {
-                glVertex3f(((float)j / 224 * 2 - 1.0f), ((float)i / 256 * 2 - 1.0f), 0.0);
+    for (l = 0; l < DISPLAY_WIDTH; ++l) {
+        for (i = 0; i < BYTES_PER_SCANLINE; ++i) {
+            unsigned char b = display[l * BYTES_PER_SCANLINE + i];
+            for (j = 0; j < 8; ++j) {
+                if (b & 0x01 != 0) {
+                    glVertex3f(((float)l / DISPLAY_WIDTH * 2 - 1.0f), ((float)(i * 8 + j)/ DISPLAY_HEIGHT * 2 - 1.0f), 0.0);
+                }
+                b >>= 1;
             }
         }
     }
+
     glEnd();
     glFlush();
 }
