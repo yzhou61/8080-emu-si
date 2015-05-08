@@ -56,6 +56,12 @@
   (byte & 0x02 ? 1 : 0), \
   (byte & 0x01 ? 1 : 0)
 
+#define ABORT(msg) \
+    do {                            \
+        printf msg;                 \
+        exit(1);                    \
+    } while (0)
+
 struct options_t {
     const char *bin_name;
 };
@@ -81,33 +87,26 @@ struct state_t {
 };
 
 static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
-                              { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
-                              { 4, 10, 16, 5, 5, 5, 7, 4, 4, 10, 16, 5, 5, 5, 7, 4, },
-                              { 4, 10, 13, 5, 10, 10, 10, 4, 4, 10, 13, 5, 5, 5, 7, 4, },
-                              { 5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, },
-                              { 5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, },
-                              { 5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, },
-                              { 7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 7, 5, },
-                              { 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, },
-                              { 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, },
-                              { 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, },
-                              { 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, },
-                              { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
-                              { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
-                              { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
-                              { 111, 10, 10, 4, 117, 11, 7, 11, 111, 5, 10, 4, 117, 17, 7, 11, }, };
+                            { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
+                            { 4, 10, 16, 5, 5, 5, 7, 4, 4, 10, 16, 5, 5, 5, 7, 4, },
+                            { 4, 10, 13, 5, 10, 10, 10, 4, 4, 10, 13, 5, 5, 5, 7, 4, },
+                            { 5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, },
+                            { 5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, },
+                            { 5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, },
+                            { 7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 7, 5, },
+                            { 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, },
+                            { 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, },
+                            { 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, },
+                            { 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, },
+                            { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
+                            { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
+                            { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
+                            { 111, 10, 10, 4, 117, 11, 7, 11, 111, 5, 10, 4, 117, 17, 7, 11, }, };
 
 static void usage()
 {
     int i, j;
-    fprintf(stderr, "Usage:\n");
-    for (i = 0; i < sizeof(cycles)/sizeof(cycles[0]); ++i) {
-        for (j = 0; j < sizeof(cycles[0])/sizeof(cycles[0][0]); ++j) {
-            printf("%4d", cycles[i][j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
+    fprintf(stderr, "Usage: a.out <ROM FILE>\n");
 }
 
 static int parse_options(int argc, char **argv, struct options_t *options)
@@ -124,44 +123,33 @@ static long init_program(const char *name, unsigned char *buffer)
 {
     FILE *bin;
     long size = -1;
-    int succeeded = 0;
 
     bin = fopen(name, "rb");
     if (NULL == bin) {
-        perror("fopen() failed\n");
-        goto Failed;
+        ABORT(("fopen() failed\n"));
     }
 
     if (0 != fseek(bin, 0, SEEK_END)) {
-        fprintf(stderr, "fseek() failed\n");
-        goto Failed;
+        ABORT(("fseek() failed\n"));
     }
 
     size = ftell(bin);
     if (0 > size) {
-        fprintf(stderr, "ftell() failed\n");
-        goto Failed;
+        ABORT(("ftell() failed\n"));
     }
     if (size > ROM_SIZE) {
-        fprintf(stderr, "program size too big\n");
-        goto Failed;
+        ABORT(("program size too big\n"));
     }
 
     rewind(bin);
 
     if (size != fread(buffer, 1, size, bin)) {
-        fprintf(stderr, "didn't read enough data\n");
-        goto Failed;
+        ABORT(("didn't read enough data\n"));
     }
 
-    succeeded = 1;
+    fclose(bin);
 
-Failed:
-    if (NULL != bin) {
-        fclose(bin);
-    }
-
-    return succeeded ? size : -1;
+    return size;
 }
 
 static unsigned char read_8b(struct state_t *state)
@@ -621,7 +609,6 @@ static int XRA(struct state_t *state, unsigned char reg)
     return 1;
 }
 
-// TODO
 static int EI(struct state_t *state)
 {
     state->intr = 1;
@@ -637,8 +624,7 @@ static int execute_one(struct state_t *state)
     int taken;
 
     if (state->pc > state->program_size) {
-        fprintf(stderr, "pc out of bound!\n");
-        exit(1);
+        ABORT(("pc out of bound!\n"));
     }
 
     instruction = state->program[state->pc];
@@ -950,8 +936,7 @@ static int execute_one(struct state_t *state)
             taken = CPI(state);
             break;
         default:
-            fprintf(stderr, "Unrecognized instruction 0x%02x at 0x%04lx\n", state->program[state->pc], state->pc);
-            return -1;
+            ABORT(("Unrecognized instruction 0x%02x at 0x%04lx\n", state->program[state->pc], state->pc));
     }
 
     cycle = cycles[instruction >> 4][instruction & 0x0F];
@@ -963,8 +948,7 @@ static int execute_one(struct state_t *state)
         }
     }
     if (cycle <= 0 || cycle >= 20) {
-        fprintf(stderr, "cycle number incorrect!\n");
-        exit(1);
+        ABORT(("cycle number incorrect!\n"));
     }
     TRACE("cycle: %d\n", cycle);
 
@@ -982,32 +966,6 @@ static void generate_intr(struct state_t *state, int intr_num)
 
 static unsigned char *display;
 static struct state_t state;
-
-/*
-
-    struct timespec ts;
-    unsigned long long last, now, last_screen;
-
-    clock_gettime(CLOCK_REALTIME, &ts);
-    last = ts.tv_sec * 1000000000 + ts.tv_nsec;
-    last_screen = last;
-    int o = 0;
-
-
-        if (now - last_screen >= 16666666 / 2) {
-            if (state->intr) {
-                generate_intr(state, o == 0 ? 1 : 2);
-                o = 1 - o;
-            }
-            last_screen = now;
-        }
-
-        clock_gettime(CLOCK_REALTIME, &ts);
-        now = ts.tv_sec * 1000000000 + ts.tv_nsec;
-
-        printf("took %llu\n", now - last);
-        last = now;
-   */
 
 static int execute(struct state_t *state, int cycles)
 {
@@ -1047,14 +1005,12 @@ static int init_state(struct state_t *state, const char *filename)
     state->program = state->mem;
     state->program_size = init_program(filename, state->mem);
     if (0 >= state->program_size) {
-        fprintf(stderr, "loading program failed\n");
-        return -1;
+        ABORT(("loading program failed\n"));
     }
 
     if (0 != mprotect(state->program, ROM_SIZE, PROT_READ)) {
         perror("mprotect() failed");
-        fprintf(stderr, "%p\n", state->program);
-        return -1;
+        ABORT(("%p\n", state->program));
     }
 
     return 0;
@@ -1068,6 +1024,11 @@ static void deinit_state(struct state_t *state)
 void display_loop()
 {
     int i, j;
+    struct timespec ts;
+    unsigned long long last;
+
+    clock_gettime(CLOCK_REALTIME, &ts);
+    last = ts.tv_sec * 1000000000 + ts.tv_nsec;
 
     execute(&state, 28527);
 
@@ -1075,6 +1036,7 @@ void display_loop()
         generate_intr(&state, 1);
     }
 
+    /*
     glClear(GL_COLOR_BUFFER_BIT);
     glBegin(GL_POINTS);
     for (i = 0; i < 256; ++i) {
@@ -1088,11 +1050,15 @@ void display_loop()
     }
     glEnd();
     glFlush();
+    */
 
     execute(&state, 4839);
     if (state.intr) {
         generate_intr(&state, 2);
     }
+
+    clock_gettime(CLOCK_REALTIME, &ts);
+    fprintf(stderr, "spent %llu on this frame\n", ts.tv_sec * 1000000000 + ts.tv_nsec - last);
 }
 
 static void *start_gl_loop(int argc, char **argv)
@@ -1114,19 +1080,15 @@ int main(int argc, char **argv)
     int res;
 
     if (parse_options(argc, argv, &options) != 0) {
-        fprintf(stderr, "Invalid options.\n");
         usage();
-        exit(1);
+        ABORT(("Invalid options.\n"));
     }
 
     if (0 > init_state(&state, options.bin_name)) {
-        fprintf(stderr, "init_state() failed\n");
-        exit(1);
+        ABORT(("init_state() failed\n"));
     }
 
     start_gl_loop(argc, argv);
-
-    //res = execute(&state);
 
     deinit_state(&state);
     return 0;
