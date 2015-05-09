@@ -1,14 +1,28 @@
-EXECUTABLE=space
-SOURCE=main.c
+TARGET=space
 DATA=invaders.rom
+SOURCE+=main.c
+SOURCE+=8080e.c
 
-.PHONY: run clean
+CC     = gcc -c
+CFLAGS = -Wall -I. -g
+LD     = gcc -o
+LDFLAGS = -Wall -lpthread -lglut -lGL -g
+RM     = rm -f
 
-$(EXECUTABLE): $(SOURCE)
-	gcc $^ -o $@ -lpthread -lglut -lGL
+SOURCES  := $(wildcard *.c)
+INCLUDES := $(wildcard *.h)
+OBJECTS  := $(SOURCES:.c=*.o)
 
-run: $(EXECUTABLE)
-	./$(EXECUTABLE) $(DATA)
+.PHONY: run clean obj
+
+$(TARGET): obj
+	$(LD) $(TARGET) $(OBJECTS) $(LDFLAGS)
+
+obj: $(SOURCES) $(INCLUDES)
+	$(CC) $(CFLAGS) $(SOURCES)
+
+run: $(TARGET)
+	./$(TARGET) $(DATA)
 
 clean:
-	rm $(EXECUTABLE)
+	rm -f $(TARGET) $(OBJECTS)
