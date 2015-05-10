@@ -15,11 +15,11 @@ OBJECTS  := $(SOURCES:.c=*.o)
 
 .PHONY: run clean obj
 
-$(TARGET): obj
+$(TARGET): $(OBJECTS)
 	$(LD) $(TARGET) $(OBJECTS) $(LDFLAGS)
 
-obj: $(SOURCES) $(INCLUDES)
-	$(CC) $(CFLAGS) $(SOURCES)
+%.o: %.c $(INCLUDES)
+	$(CC) $(CFLAGS) $<
 
 run: $(TARGET)
 	./$(TARGET) $(DATA)
