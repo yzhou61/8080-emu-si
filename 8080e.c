@@ -6,6 +6,8 @@
 #include <sys/mman.h>
 
 #define MEM_SIZE (0x4000)
+// TODO Allow some buffer space after the mem, to avoid segfaults
+#define MIRROR_SIZE (0x1000)
 #define STACK_BOTTOM (0x2400)
 #define ROM_SIZE (0x2000)
 
@@ -149,8 +151,8 @@ struct machine_t *init_machine(const char *bin_name)
     state->e = (unsigned char *)&(state->de);
     state->h = ((unsigned char *)&(state->hl)) + 1;
     state->l = (unsigned char *)&(state->hl);
-    posix_memalign((void **)&(state->mem), 0x1000, MEM_SIZE);
-    memset(state->mem, 0xdd, MEM_SIZE);
+    posix_memalign((void **)&(state->mem), 0x1000, MEM_SIZE + MIRROR_SIZE);
+    memset(state->mem, 0xdd, MEM_SIZE + MIRROR_SIZE);
 
     state->program = state->mem;
     state->program_size = init_program(bin_name, state->mem);
@@ -228,6 +230,15 @@ static void set_ZSP(struct state_t *state, unsigned char res)
         state->f |=  FP;
     } else {
         state->f &= ~FP;
+    }
+}
+
+static void set_A(struct state_t *state, unsigned char before, unsigned char after)
+{
+    if ((before & 0x80) != (after & 0x80)) {
+        state->f |= FA;
+    } else {
+        state->f &= ~FA;
     }
 }
 
@@ -401,6 +412,17 @@ static int LHLD(struct state_t *state)
     return 1;
 }
 
+static int SHLD(struct state_t *state)
+{
+    unsigned int mem = read_16b(state);
+
+    state->mem[mem] = *state->l;
+    state->mem[mem + 1] = *state->h;
+
+    ++(state->pc);
+    return 1;
+}
+
 static int LDAX(struct state_t *state, unsigned int reg)
 {
     state->a = state->mem[reg];
@@ -442,6 +464,28 @@ static unsigned char *get_reg(struct state_t *state, unsigned char encoding)
     return NULL;
 }
 
+static unsigned int *get_dreg(struct state_t *state, unsigned char encoding)
+{
+    switch (encoding) {
+        case 0x00:
+            TRACE("BC\t");
+            return &(state->bc);
+        case 0x01:
+            TRACE("DE\t");
+            return &(state->de);
+        case 0x02:
+            TRACE("HL\t");
+            return &(state->hl);
+        case 0x03:
+            TRACE("SP\t");
+            return &(state->sp);
+        default:
+            ABORT(("Invalid register encoding\n"));
+    }
+
+    return NULL;
+}
+
 static int MOV(struct state_t *state, unsigned char instr)
 {
     unsigned char dst, src;
@@ -454,6 +498,70 @@ static int MOV(struct state_t *state, unsigned char instr)
     return 1;
 }
 
+static unsigned char add(struct state_t *state, unsigned int a, unsigned int b)
+{
+    unsigned char res = a + b;
+
+    if (a + b > 0xFF) {
+        state->f |= FC;
+    } else {
+        state->f &= ~FC;
+    }
+
+    set_A(state, a, res);
+    set_ZSP(state, res);
+
+    return res;
+}
+
+static unsigned char sub(struct state_t *state, unsigned int a, unsigned int b)
+{
+    unsigned char res = a - b;
+
+    if (a < b) {
+        state->f |= FC;
+    } else {
+        state->f &= ~FC;
+    }
+
+    set_A(state, a, res);
+    set_ZSP(state, res);
+
+    return res;
+}
+
+static int ADD(struct state_t *state, unsigned char instr, int carry)
+{
+    unsigned char src;
+
+    src = (instr & 0x07);
+
+    state->a = add(state, state->a, (int)*get_reg(state, src) + (carry ? 1 : 0));
+
+    ++(state->pc);
+    return 1;
+}
+
+static int SUB(struct state_t *state, unsigned char instr, int carry)
+{
+    unsigned char src;
+
+    src = (instr & 0x07);
+
+    state->a = sub(state, state->a, (int)*get_reg(state, src) + (carry ? 1 : 0));
+
+    ++(state->pc);
+    return 1;
+}
+
+static int SBI(struct state_t *state)
+{
+    state->a = sub(state, state->a, read_8b(state) + 1);
+
+    ++(state->pc);
+    return 1;
+}
+
 static int MVIM(struct state_t *state)
 {
     unsigned char i = read_8b(state);
@@ -462,9 +570,12 @@ static int MVIM(struct state_t *state)
     return 1;
 }
 
-static int INX(struct state_t *state, unsigned int *reg)
+static int INX(struct state_t *state, unsigned char instr)
 {
-    ++(*reg);
+    unsigned char dreg = (instr & 0x30) >> 4;
+
+    ++(*get_dreg(state, dreg));
+
     ++(state->pc);
     return 1;
 }
@@ -478,38 +589,23 @@ static int DCX(struct state_t *state, unsigned int *reg)
 
 static unsigned char inc_dec(struct state_t *state, unsigned char i, int p)
 {
-    unsigned int ac = (i & 0x08);
+    unsigned char res;
 
-    i += p;
+    res = i + p;
 
-    set_ZSP(state, i);
+    set_A(state, i, res);
+    set_ZSP(state, res);
 
-    if ((i & 0x08) != ac) {
-        state->f |=  FA;
-    } else {
-        state->f &= ~FA;
-    }
-
-    return i;
+    return res;
 }
 
-static int INR(struct state_t *state, unsigned char *reg)
+static int INR(struct state_t *state, unsigned char instr, int inc)
 {
-    *reg = inc_dec(state, *reg, 1);
-    ++(state->pc);
-    return 1;
-}
+    unsigned char enc = (instr & 0x38);
+    unsigned char *reg = get_reg(state, enc >> 3);
 
-static int DCR_M(struct state_t *state)
-{
-    state->mem[state->hl] = inc_dec(state, state->mem[state->hl], -1);
-    ++(state->pc);
-    return 1;
-}
+    *reg = inc_dec(state, *reg, (inc ? 1 : -1));
 
-static int DCR(struct state_t *state, unsigned char *reg)
-{
-    *reg = inc_dec(state, *reg, -1);
     ++(state->pc);
     return 1;
 }
@@ -604,6 +700,8 @@ static int IN(struct state_t *state)
 {
     read_8b(state);
 
+    state->a = 0;
+
     ++(state->pc);
     return 1;
 }
@@ -666,6 +764,18 @@ static unsigned char and(struct state_t *state, unsigned char a, unsigned char b
 {
     unsigned char res = a & b;
 
+    set_A(state, a, res);
+    set_ZSP(state, res);
+
+    state->f &= ~FC;
+
+    return res;
+}
+
+static unsigned char or(struct state_t *state, unsigned char a, unsigned char b)
+{
+    unsigned char res = a | b;
+
     set_ZSP(state, res);
 
     state->f &= ~FC;
@@ -674,9 +784,9 @@ static unsigned char and(struct state_t *state, unsigned char a, unsigned char b
     return res;
 }
 
-static unsigned char or(struct state_t *state, unsigned char a, unsigned char b)
+static unsigned char xor(struct state_t *state, unsigned char a, unsigned char b)
 {
-    unsigned char res = a | b;
+    unsigned char res = a ^ b;
 
     set_ZSP(state, res);
 
@@ -696,25 +806,37 @@ static int ANI(struct state_t *state)
     return 1;
 }
 
-static int ANA(struct state_t *state, unsigned char reg)
+static int ANA(struct state_t *state, unsigned char instr)
 {
-    state->a = and(state, state->a, reg);
+    unsigned char src;
+
+    src = (instr & 0x07);
+
+    state->a = and(state, state->a, *get_reg(state, src));
 
     ++(state->pc);
     return 1;
 }
 
-static int ORA(struct state_t *state, unsigned char reg)
+static int ORA(struct state_t *state, unsigned char instr)
 {
-    state->a = or(state, state->a, reg);
+    unsigned char src;
+
+    src = (instr & 0x07);
+
+    state->a = or(state, state->a, *get_reg(state, src));
 
     ++(state->pc);
     return 1;
 }
 
-static int ORA_M(struct state_t *state)
+static int CMP(struct state_t *state, unsigned char instr)
 {
-    state->a = or(state, state->a, state->mem[state->hl]);
+    unsigned char src;
+
+    src = (instr & 0x07);
+
+    sub(state, state->a, *get_reg(state, src));
 
     ++(state->pc);
     return 1;
@@ -733,24 +855,18 @@ static int ORI(struct state_t *state)
 static int ADI(struct state_t *state)
 {
     unsigned char b = read_8b(state);
-    unsigned int ac = (state->a & 0x08);
     unsigned int sum;
 
     sum = state->a + b;
-    state->a = (sum & 0xFF);
+    set_A(state, state->a, sum);
 
+    state->a = (sum & 0xFF);
     set_ZSP(state, state->a);
 
     if (sum > 0xFF) {
         state->f |=  FC;
     } else {
         state->f &= ~FC;
-    }
-
-    if ((sum & 0x08) != ac) {
-        state->f |=  FA;
-    } else {
-        state->f &= ~FA;
     }
 
     ++(state->pc);
@@ -760,7 +876,6 @@ static int ADI(struct state_t *state)
 static int SUI(struct state_t *state)
 {
     unsigned char b = read_8b(state);
-    unsigned int ac = (state->a & 0x08);
     unsigned int sum;
 
     if (state->a < b) {
@@ -770,15 +885,10 @@ static int SUI(struct state_t *state)
     }
 
     sum = state->a - b;
+    set_A(state, state->a, sum);
+
     state->a = (sum & 0xFF);
-
     set_ZSP(state, state->a);
-
-    if ((sum & 0x08) != ac) {
-        state->f |=  FA;
-    } else {
-        state->f &= ~FA;
-    }
 
     ++(state->pc);
     return 1;
@@ -793,14 +903,13 @@ static int STA(struct state_t *state)
     return 1;
 }
 
-static int XRA(struct state_t *state, unsigned char reg)
+static int XRA(struct state_t *state, unsigned char instr)
 {
-    state->a ^= reg;
+    unsigned char src;
 
-    set_ZSP(state, state->a);
+    src = (instr & 0x07);
 
-    state->f &= ~FC;
-    state->f &= ~FA;
+    state->a = xor(state, state->a, *get_reg(state, src));
 
     ++(state->pc);
     return 1;
@@ -821,27 +930,86 @@ static int STC(struct state_t *state)
     return 1;
 }
 
+static int DAA(struct state_t *state)
+{
+    if ((state->a & 0x0F) > 9 || (state->f & FA)) {
+        state->a = add(state, state->a, 0x06);
+    }
+
+    if ((state->a & 0xF0) > 9 || (state->f & FC)) {
+        state->a = add(state, state->a, 0x60);
+    }
+
+    ++(state->pc);
+    return 1;
+}
+
 static int execute_one(struct state_t *state)
 {
     unsigned char instruction;
     int cycle;
     int taken;
+    int stop = 0;
 
     if (state->pc > state->program_size) {
-        ABORT(("pc out of bound!\n"));
+        ABORT(("pc out of bound! %lu\n", state->pc));
     }
 
     instruction = state->program[state->pc];
 
     if ((instruction & 0xC0) == 0x40) {
-        // HLT
+    // 01XX XXXX
         if (instruction == 0x76) {
+            // HLT
             exit(0);
         }
 
-        // MOV
         TRACE_INS(MOV);
-        MOV(state, instruction);
+        taken = MOV(state, instruction);
+    } else if ((instruction & 0xF8) == 0x80) {
+    // 1000 0XXX
+        TRACE_INS(ADD);
+        taken = ADD(state, instruction, 0);
+    } else if ((instruction & 0xF8) == 0x88) {
+    // 1000 1XXX
+        TRACE_INS(ADC);
+        taken = ADD(state, instruction, 1);
+    } else if ((instruction & 0xF8) == 0x90) {
+    // 1001 0XXX
+        TRACE_INS(SUB);
+        taken = SUB(state, instruction, 0);
+    } else if ((instruction & 0xF8) == 0x98) {
+    // 1001 1XXX
+        TRACE_INS(SBB);
+        taken = SUB(state, instruction, 1);
+    } else if ((instruction & 0xF8) == 0xA0) {
+    // 1010 0XXX
+        TRACE_INS(ANA);
+        taken = ANA(state, instruction);
+    } else if ((instruction & 0xF8) == 0xA8) {
+    // 1010 1XXX
+        TRACE_INS(XRA);
+        taken = XRA(state, instruction);
+    } else if ((instruction & 0xF8) == 0xB0) {
+    // 1011 0XXX
+        TRACE_INS(ORA);
+        taken = ORA(state, instruction);
+    } else if ((instruction & 0xF8) == 0xB8) {
+    // 1011 1XXX
+        TRACE_INS(CMP);
+        taken = CMP(state, instruction);
+    } else if ((instruction & 0xCF) == 0x03) {
+    // 00XX 0011
+        TRACE_INS(INX);
+        taken = INX(state, instruction);
+    } else if ((instruction & 0xC7) == 0x04) {
+    // 00XX X100
+        TRACE_INS(INR);
+        taken = INR(state, instruction, 1);
+    } else if ((instruction & 0xC7) == 0x05) {
+    // 00XX X101
+        TRACE_INS(DCR);
+        taken = INR(state, instruction, 0);
     } else {
         switch(instruction) {
             case 0x00:
@@ -852,21 +1020,6 @@ static int execute_one(struct state_t *state)
                 TRACE_INS(LXI);
                 TRACE("BC\t");
                 taken = LXI(state, &(state->bc));
-                break;
-            case 0x03:
-                TRACE_INS(INX);
-                TRACE("BC\t");
-                taken = INX(state, &(state->bc));
-                break;
-            case 0x04:
-                TRACE_INS(INR);
-                TRACE("B\t");
-                taken = INR(state, state->b);
-                break;
-            case 0x05:
-                TRACE_INS(DCR);
-                TRACE("B\t");
-                taken = DCR(state, state->b);
                 break;
             case 0x06:
                 TRACE_INS(MVI);
@@ -887,11 +1040,6 @@ static int execute_one(struct state_t *state)
                 TRACE("BC\t");
                 taken = LDAX(state, state->bc);
                 break;
-            case 0x0D:
-                TRACE_INS(DCR);
-                TRACE("C\t");
-                taken = DCR(state, state->c);
-                break;
             case 0x0E:
                 TRACE_INS(MVI);
                 TRACE("C\t");
@@ -905,16 +1053,6 @@ static int execute_one(struct state_t *state)
                 TRACE_INS(LXI);
                 TRACE("DE\t");
                 taken = LXI(state, &(state->de));
-                break;
-            case 0x13:
-                TRACE_INS(INX);
-                TRACE("DE\t");
-                taken = INX(state, &(state->de));
-                break;
-            case 0x15:
-                TRACE_INS(DCR);
-                TRACE("D\t");
-                taken = DCR(state, state->d);
                 break;
             case 0x16:
                 TRACE_INS(MVI);
@@ -931,11 +1069,6 @@ static int execute_one(struct state_t *state)
                 TRACE("DE\t");
                 taken = LDAX(state, state->de);
                 break;
-            case 0x1D:
-                TRACE_INS(DCR);
-                TRACE("E\t");
-                taken = DCR(state, state->e);
-                break;
             case 0x1E:
                 TRACE_INS(MVI);
                 TRACE("E\t");
@@ -950,15 +1083,18 @@ static int execute_one(struct state_t *state)
                 TRACE("HL\t");
                 taken = LXI(state, &(state->hl));
                 break;
-            case 0x23:
-                TRACE_INS(INX);
-                TRACE("HL\t");
-                taken = INX(state, &(state->hl));
+            case 0x22:
+                TRACE_INS(SHLD);
+                taken = SHLD(state);
                 break;
             case 0x26:
                 TRACE_INS(MVI);
                 TRACE("H\t");
                 taken = MVI(state, state->h);
+                break;
+            case 0x27:
+                TRACE_INS(DAA);
+                taken = DAA(state);
                 break;
             case 0x29:
                 TRACE_INS(DAD);
@@ -988,11 +1124,6 @@ static int execute_one(struct state_t *state)
                 TRACE_INS(STA);
                 taken = STA(state);
                 break;
-            case 0x35:
-                TRACE_INS(DCR);
-                TRACE("M\t");
-                taken = DCR_M(state);
-                break;
             case 0x36:
                 TRACE_INS(MVIM);
                 taken = MVIM(state);
@@ -1005,40 +1136,10 @@ static int execute_one(struct state_t *state)
                 TRACE_INS(LDA);
                 taken = LDA(state);
                 break;
-            case 0x3C:
-                TRACE_INS(INR);
-                TRACE("A\t");
-                taken = INR(state, &(state->a));
-                break;
-            case 0x3D:
-                TRACE_INS(DCR);
-                TRACE("A\t");
-                taken = DCR(state, &(state->a));
-                break;
             case 0x3E:
                 TRACE_INS(MVI);
                 TRACE("A\t");
                 taken = MVI(state, &(state->a));
-                break;
-            case 0xA7:
-                TRACE_INS(ANA);
-                TRACE("A\t");
-                taken = ANA(state, state->a);
-                break;
-            case 0xAF:
-                TRACE_INS(XRA);
-                TRACE("A\t");
-                taken = XRA(state, state->a);
-                break;
-            case 0xB0:
-                TRACE_INS(ORA);
-                TRACE("B\t");
-                taken = ORA(state, *state->b);
-                break;
-            case 0xB6:
-                TRACE_INS(ORA);
-                TRACE("M\t");
-                taken = ORA_M(state);
                 break;
             case 0xC0:
                 TRACE_INS(RNZ);
@@ -1128,6 +1229,10 @@ static int execute_one(struct state_t *state)
                 TRACE_INS(*IN);
                 taken = IN(state);
                 break;
+            case 0xDE:
+                TRACE_INS(SBI);
+                taken = SBI(state);
+                break;
             case 0xE1:
                 TRACE_INS(POP);
                 TRACE("H\tL\t");
@@ -1203,6 +1308,10 @@ static int execute_one(struct state_t *state)
     TRACE("cycle: %d\n", cycle);
 
     TRACE_STATE();
+
+    if (stop) {
+        exit(1);
+    }
     return cycle;
 }
 
