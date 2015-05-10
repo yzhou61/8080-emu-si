@@ -408,23 +408,48 @@ static int LDAX(struct state_t *state, unsigned int reg)
     return 1;
 }
 
-static int MOVM(struct state_t *state, unsigned char src)
+static unsigned char *get_reg(struct state_t *state, unsigned char encoding)
 {
-    state->mem[state->hl] = src;
-    ++(state->pc);
-    return 1;
+    switch (encoding) {
+        case 0x00:
+            TRACE("B\t");
+            return state->b;
+        case 0x01:
+            TRACE("C\t");
+            return state->c;
+        case 0x02:
+            TRACE("D\t");
+            return state->d;
+        case 0x03:
+            TRACE("E\t");
+            return state->e;
+        case 0x04:
+            TRACE("H\t");
+            return state->h;
+        case 0x05:
+            TRACE("L\t");
+            return state->l;
+        case 0x06:
+            TRACE("M\t");
+            return &(state->mem[state->hl]);
+        case 0x07:
+            TRACE("A\t");
+            return &(state->a);
+        default:
+            ABORT(("Invalid register encoding\n"));
+    }
+
+    return NULL;
 }
 
-static int MOVXM(struct state_t *state, unsigned char *dst)
+static int MOV(struct state_t *state, unsigned char instr)
 {
-    *dst = state->mem[state->hl];
-    ++(state->pc);
-    return 1;
-}
+    unsigned char dst, src;
 
-static int MOV(struct state_t *state, unsigned char *dst, unsigned char src)
-{
-    *dst = src;
+    dst = ((instr & 0x38) >> 3);
+    src = (instr & 0x07);
+
+    *get_reg(state, dst) = *get_reg(state, src);
     ++(state->pc);
     return 1;
 }
@@ -808,431 +833,360 @@ static int execute_one(struct state_t *state)
 
     instruction = state->program[state->pc];
 
-    switch(instruction) {
-        case 0x00:
-            TRACE_INS(NOP);
-            taken = NOP(state);
-            break;
-        case 0x01:
-            TRACE_INS(LXI);
-            TRACE("BC\t");
-            taken = LXI(state, &(state->bc));
-            break;
-        case 0x03:
-            TRACE_INS(INX);
-            TRACE("BC\t");
-            taken = INX(state, &(state->bc));
-            break;
-        case 0x04:
-            TRACE_INS(INR);
-            TRACE("B\t");
-            taken = INR(state, state->b);
-            break;
-        case 0x05:
-            TRACE_INS(DCR);
-            TRACE("B\t");
-            taken = DCR(state, state->b);
-            break;
-        case 0x06:
-            TRACE_INS(MVI);
-            TRACE("B\t");
-            taken = MVI(state, state->b);
-            break;
-        case 0x07:
-            TRACE_INS(RLC);
-            taken = RLC(state);
-            break;
-        case 0x09:
-            TRACE_INS(DAD);
-            TRACE("BC\t");
-            taken = DAD(state, state->bc);
-            break;
-        case 0x0A:
-            TRACE_INS(LDAX);
-            TRACE("BC\t");
-            taken = LDAX(state, state->bc);
-            break;
-        case 0x0D:
-            TRACE_INS(DCR);
-            TRACE("C\t");
-            taken = DCR(state, state->c);
-            break;
-        case 0x0E:
-            TRACE_INS(MVI);
-            TRACE("C\t");
-            taken = MVI(state, state->c);
-            break;
-        case 0x0F:
-            TRACE_INS(RRC);
-            taken = RRC(state);
-            break;
-        case 0x11:
-            TRACE_INS(LXI);
-            TRACE("DE\t");
-            taken = LXI(state, &(state->de));
-            break;
-        case 0x13:
-            TRACE_INS(INX);
-            TRACE("DE\t");
-            taken = INX(state, &(state->de));
-            break;
-        case 0x15:
-            TRACE_INS(DCR);
-            TRACE("D\t");
-            taken = DCR(state, state->d);
-            break;
-        case 0x16:
-            TRACE_INS(MVI);
-            TRACE("D\t");
-            taken = MVI(state, state->d);
-            break;
-        case 0x19:
-            TRACE_INS(DAD);
-            TRACE("DE\t");
-            taken = DAD(state, state->de);
-            break;
-        case 0x1A:
-            TRACE_INS(LDAX);
-            TRACE("DE\t");
-            taken = LDAX(state, state->de);
-            break;
-        case 0x1D:
-            TRACE_INS(DCR);
-            TRACE("E\t");
-            taken = DCR(state, state->e);
-            break;
-        case 0x1E:
-            TRACE_INS(MVI);
-            TRACE("E\t");
-            taken = MVI(state, state->e);
-            break;
-        case 0x1F:
-            TRACE_INS(RAR);
-            taken = RAR(state);
-            break;
-        case 0x21:
-            TRACE_INS(LXI);
-            TRACE("HL\t");
-            taken = LXI(state, &(state->hl));
-            break;
-        case 0x23:
-            TRACE_INS(INX);
-            TRACE("HL\t");
-            taken = INX(state, &(state->hl));
-            break;
-        case 0x26:
-            TRACE_INS(MVI);
-            TRACE("H\t");
-            taken = MVI(state, state->h);
-            break;
-        case 0x29:
-            TRACE_INS(DAD);
-            TRACE("HL\t");
-            taken = DAD(state, state->hl);
-            break;
-        case 0x2A:
-            TRACE_INS(LHLD);
-            taken = LHLD(state);
-            break;
-        case 0x2B:
-            TRACE_INS(DCX);
-            TRACE("HL\t");
-            taken = DCX(state, &(state->hl));
-            break;
-        case 0x2E:
-            TRACE_INS(MVI);
-            TRACE("L\t");
-            taken = MVI(state, state->l);
-            break;
-        case 0x31:
-            TRACE_INS(LXI);
-            TRACE("SP\t");
-            taken = LXI(state, &(state->sp));
-            break;
-        case 0x32:
-            TRACE_INS(STA);
-            taken = STA(state);
-            break;
-        case 0x35:
-            TRACE_INS(DCR);
-            TRACE("M\t");
-            taken = DCR_M(state);
-            break;
-        case 0x36:
-            TRACE_INS(MVIM);
-            taken = MVIM(state);
-            break;
-        case 0x37:
-            TRACE_INS(STC);
-            taken = STC(state);
-            break;
-        case 0x3A:
-            TRACE_INS(LDA);
-            taken = LDA(state);
-            break;
-        case 0x3C:
-            TRACE_INS(INR);
-            TRACE("A\t");
-            taken = INR(state, &(state->a));
-            break;
-        case 0x3D:
-            TRACE_INS(DCR);
-            TRACE("A\t");
-            taken = DCR(state, &(state->a));
-            break;
-        case 0x3E:
-            TRACE_INS(MVI);
-            TRACE("A\t");
-            taken = MVI(state, &(state->a));
-            break;
-        case 0x46:
-            TRACE_INS(MOVXM);
-            TRACE("B\t");
-            taken = MOVXM(state, state->b);
-            break;
-        case 0x4E:
-            TRACE_INS(MOVXM);
-            TRACE("C\t");
-            taken = MOVXM(state, state->c);
-            break;
-        case 0x4F:
-            TRACE_INS(MOV);
-            TRACE("C\tA\t");
-            taken = MOV(state, state->c, state->a);
-            break;
-        case 0x56:
-            TRACE_INS(MOVXM);
-            TRACE("D\t");
-            taken = MOVXM(state, state->d);
-            break;
-        case 0x57:
-            TRACE_INS(MOV);
-            TRACE("D\tA\t");
-            taken = MOV(state, state->d, state->a);
-            break;
-        case 0x5E:
-            TRACE_INS(MOVXM);
-            TRACE("E\t");
-            taken = MOVXM(state, state->e);
-            break;
-        case 0x5F:
-            TRACE_INS(MOV);
-            TRACE("E\tA\t");
-            taken = MOV(state, state->e, state->a);
-            break;
-        case 0x66:
-            TRACE_INS(MOVXM);
-            TRACE("H\t");
-            taken = MOVXM(state, state->h);
-            break;
-        case 0x67:
-            TRACE_INS(MOV);
-            TRACE("H\tA\t");
-            taken = MOV(state, state->h, state->a);
-            break;
-        case 0x6F:
-            TRACE_INS(MOV);
-            TRACE("L\tA\t");
-            taken = MOV(state, state->l, state->a);
-            break;
-        case 0x70:
-            TRACE_INS(MOVM);
-            TRACE("B\t");
-            taken = MOVM(state, *state->b);
-            break;
-        case 0x77:
-            TRACE_INS(MOVM);
-            TRACE("A\t");
-            taken = MOVM(state, state->a);
-            break;
-        case 0x78:
-            TRACE_INS(MOV);
-            TRACE("A\tB\t");
-            taken = MOV(state, &(state->a), *state->b);
-            break;
-        case 0x79:
-            TRACE_INS(MOV);
-            TRACE("A\tC\t");
-            taken = MOV(state, &(state->a), *state->c);
-            break;
-        case 0x7A:
-            TRACE_INS(MOV);
-            TRACE("A\tD\t");
-            taken = MOV(state, &(state->a), *state->d);
-            break;
-        case 0x7B:
-            TRACE_INS(MOV);
-            TRACE("A\tE\t");
-            taken = MOV(state, &(state->a), *state->e);
-            break;
-        case 0x7C:
-            TRACE_INS(MOV);
-            TRACE("A\tH\t");
-            taken = MOV(state, &(state->a), *state->h);
-            break;
-        case 0x7D:
-            TRACE_INS(MOV);
-            TRACE("A\tL\t");
-            taken = MOV(state, &(state->a), *state->l);
-            break;
-        case 0x7E:
-            TRACE_INS(MOVXM);
-            TRACE("A\t");
-            taken = MOVXM(state, &(state->a));
-            break;
-        case 0xA7:
-            TRACE_INS(ANA);
-            TRACE("A\t");
-            taken = ANA(state, state->a);
-            break;
-        case 0xAF:
-            TRACE_INS(XRA);
-            TRACE("A\t");
-            taken = XRA(state, state->a);
-            break;
-        case 0xB0:
-            TRACE_INS(ORA);
-            TRACE("B\t");
-            taken = ORA(state, *state->b);
-            break;
-        case 0xB6:
-            TRACE_INS(ORA);
-            TRACE("M\t");
-            taken = ORA_M(state);
-            break;
-        case 0xC0:
-            TRACE_INS(RNZ);
-            taken = RNZ(state);
-            break;
-        case 0xC1:
-            TRACE_INS(POP);
-            TRACE("BC\t");
-            taken = POP(state, &(state->bc));
-            break;
-        case 0xC2:
-            TRACE_INS(JNZ);
-            taken = JNZ(state);
-            break;
-        case 0xC3:
-            TRACE_INS(JMP);
-            taken = JMP(state);
-            break;
-        case 0xC4:
-            TRACE_INS(CNZ);
-            taken = CNZ(state);
-            break;
-        case 0xC5:
-            TRACE_INS(PUSH);
-            TRACE("B\tC\t");
-            taken = PUSH(state, state->bc);
-            break;
-        case 0xC6:
-            TRACE_INS(ADI);
-            taken = ADI(state);
-            break;
-        case 0xC8:
-            TRACE_INS(RZ);
-            taken = RZ(state);
-            break;
-        case 0xC9:
-            TRACE_INS(RET);
-            taken = RET(state);
-            break;
-        case 0xCA:
-            TRACE_INS(JZ);
-            taken = JZ(state);
-            break;
-        case 0xCC:
-            TRACE_INS(CZ);
-            taken = CZ(state);
-            break;
-        case 0xCD:
-            TRACE_INS(CAL);
-            taken = CAL(state);
-            break;
-        case 0xD0:
-            TRACE_INS(RNC);
-            taken = RNC(state);
-            break;
-        case 0xD1:
-            TRACE_INS(POP);
-            TRACE("DE\t");
-            taken = POP(state, &(state->de));
-            break;
-        case 0xD2:
-            TRACE_INS(JNC);
-            taken = JNC(state);
-            break;
-        case 0xD3:
-            TRACE_INS(*OUT);
-            taken = OUT(state);
-            break;
-        case 0xD5:
-            TRACE_INS(PUSH);
-            TRACE("D\tE\t");
-            taken = PUSH(state, state->de);
-            break;
-        case 0xD6:
-            TRACE_INS(SUI);
-            taken = SUI(state);
-            break;
-        case 0xD8:
-            TRACE_INS(RC);
-            taken = RC(state);
-            break;
-        case 0xDA:
-            TRACE_INS(JC);
-            taken = JC(state);
-            break;
-        case 0xDB:
-            TRACE_INS(*IN);
-            taken = IN(state);
-            break;
-        case 0xE1:
-            TRACE_INS(POP);
-            TRACE("H\tL\t");
-            taken = POP(state, &(state->hl));
-            break;
-        case 0xE5:
-            TRACE_INS(PUSH);
-            TRACE("H\tL\t");
-            taken = PUSH(state, state->hl);
-            break;
-        case 0xE6:
-            TRACE_INS(ANI);
-            taken = ANI(state);
-            break;
-        case 0xEB:
-            TRACE_INS(XCHG);
-            TRACE("HL\tDE\t");
-            taken = XCHG(state);
-            break;
-        case 0xF1:
-            TRACE_INS(POPPSW);
-            taken = POPPSW(state);
-            break;
-        case 0xF5:
-            TRACE_INS(PUSHPSW);
-            taken = PUSHPSW(state);
-            break;
-        case 0xF6:
-            TRACE_INS(ORI);
-            taken = ORI(state);
-            break;
-        case 0xFA:
-            TRACE_INS(JM);
-            taken = JM(state);
-            break;
-        case 0xFB:
-            TRACE_INS(EI);
-            taken = EI(state);
-            break;
-        case 0xFE:
-            TRACE_INS(CPI);
-            taken = CPI(state);
-            break;
-        default:
-            ABORT(("Unrecognized instruction 0x%02x at 0x%04lx\n", state->program[state->pc], state->pc));
+    if ((instruction & 0xC0) == 0x40) {
+        // HLT
+        if (instruction == 0x76) {
+            exit(0);
+        }
+
+        // MOV
+        TRACE_INS(MOV);
+        MOV(state, instruction);
+    } else {
+        switch(instruction) {
+            case 0x00:
+                TRACE_INS(NOP);
+                taken = NOP(state);
+                break;
+            case 0x01:
+                TRACE_INS(LXI);
+                TRACE("BC\t");
+                taken = LXI(state, &(state->bc));
+                break;
+            case 0x03:
+                TRACE_INS(INX);
+                TRACE("BC\t");
+                taken = INX(state, &(state->bc));
+                break;
+            case 0x04:
+                TRACE_INS(INR);
+                TRACE("B\t");
+                taken = INR(state, state->b);
+                break;
+            case 0x05:
+                TRACE_INS(DCR);
+                TRACE("B\t");
+                taken = DCR(state, state->b);
+                break;
+            case 0x06:
+                TRACE_INS(MVI);
+                TRACE("B\t");
+                taken = MVI(state, state->b);
+                break;
+            case 0x07:
+                TRACE_INS(RLC);
+                taken = RLC(state);
+                break;
+            case 0x09:
+                TRACE_INS(DAD);
+                TRACE("BC\t");
+                taken = DAD(state, state->bc);
+                break;
+            case 0x0A:
+                TRACE_INS(LDAX);
+                TRACE("BC\t");
+                taken = LDAX(state, state->bc);
+                break;
+            case 0x0D:
+                TRACE_INS(DCR);
+                TRACE("C\t");
+                taken = DCR(state, state->c);
+                break;
+            case 0x0E:
+                TRACE_INS(MVI);
+                TRACE("C\t");
+                taken = MVI(state, state->c);
+                break;
+            case 0x0F:
+                TRACE_INS(RRC);
+                taken = RRC(state);
+                break;
+            case 0x11:
+                TRACE_INS(LXI);
+                TRACE("DE\t");
+                taken = LXI(state, &(state->de));
+                break;
+            case 0x13:
+                TRACE_INS(INX);
+                TRACE("DE\t");
+                taken = INX(state, &(state->de));
+                break;
+            case 0x15:
+                TRACE_INS(DCR);
+                TRACE("D\t");
+                taken = DCR(state, state->d);
+                break;
+            case 0x16:
+                TRACE_INS(MVI);
+                TRACE("D\t");
+                taken = MVI(state, state->d);
+                break;
+            case 0x19:
+                TRACE_INS(DAD);
+                TRACE("DE\t");
+                taken = DAD(state, state->de);
+                break;
+            case 0x1A:
+                TRACE_INS(LDAX);
+                TRACE("DE\t");
+                taken = LDAX(state, state->de);
+                break;
+            case 0x1D:
+                TRACE_INS(DCR);
+                TRACE("E\t");
+                taken = DCR(state, state->e);
+                break;
+            case 0x1E:
+                TRACE_INS(MVI);
+                TRACE("E\t");
+                taken = MVI(state, state->e);
+                break;
+            case 0x1F:
+                TRACE_INS(RAR);
+                taken = RAR(state);
+                break;
+            case 0x21:
+                TRACE_INS(LXI);
+                TRACE("HL\t");
+                taken = LXI(state, &(state->hl));
+                break;
+            case 0x23:
+                TRACE_INS(INX);
+                TRACE("HL\t");
+                taken = INX(state, &(state->hl));
+                break;
+            case 0x26:
+                TRACE_INS(MVI);
+                TRACE("H\t");
+                taken = MVI(state, state->h);
+                break;
+            case 0x29:
+                TRACE_INS(DAD);
+                TRACE("HL\t");
+                taken = DAD(state, state->hl);
+                break;
+            case 0x2A:
+                TRACE_INS(LHLD);
+                taken = LHLD(state);
+                break;
+            case 0x2B:
+                TRACE_INS(DCX);
+                TRACE("HL\t");
+                taken = DCX(state, &(state->hl));
+                break;
+            case 0x2E:
+                TRACE_INS(MVI);
+                TRACE("L\t");
+                taken = MVI(state, state->l);
+                break;
+            case 0x31:
+                TRACE_INS(LXI);
+                TRACE("SP\t");
+                taken = LXI(state, &(state->sp));
+                break;
+            case 0x32:
+                TRACE_INS(STA);
+                taken = STA(state);
+                break;
+            case 0x35:
+                TRACE_INS(DCR);
+                TRACE("M\t");
+                taken = DCR_M(state);
+                break;
+            case 0x36:
+                TRACE_INS(MVIM);
+                taken = MVIM(state);
+                break;
+            case 0x37:
+                TRACE_INS(STC);
+                taken = STC(state);
+                break;
+            case 0x3A:
+                TRACE_INS(LDA);
+                taken = LDA(state);
+                break;
+            case 0x3C:
+                TRACE_INS(INR);
+                TRACE("A\t");
+                taken = INR(state, &(state->a));
+                break;
+            case 0x3D:
+                TRACE_INS(DCR);
+                TRACE("A\t");
+                taken = DCR(state, &(state->a));
+                break;
+            case 0x3E:
+                TRACE_INS(MVI);
+                TRACE("A\t");
+                taken = MVI(state, &(state->a));
+                break;
+            case 0xA7:
+                TRACE_INS(ANA);
+                TRACE("A\t");
+                taken = ANA(state, state->a);
+                break;
+            case 0xAF:
+                TRACE_INS(XRA);
+                TRACE("A\t");
+                taken = XRA(state, state->a);
+                break;
+            case 0xB0:
+                TRACE_INS(ORA);
+                TRACE("B\t");
+                taken = ORA(state, *state->b);
+                break;
+            case 0xB6:
+                TRACE_INS(ORA);
+                TRACE("M\t");
+                taken = ORA_M(state);
+                break;
+            case 0xC0:
+                TRACE_INS(RNZ);
+                taken = RNZ(state);
+                break;
+            case 0xC1:
+                TRACE_INS(POP);
+                TRACE("BC\t");
+                taken = POP(state, &(state->bc));
+                break;
+            case 0xC2:
+                TRACE_INS(JNZ);
+                taken = JNZ(state);
+                break;
+            case 0xC3:
+                TRACE_INS(JMP);
+                taken = JMP(state);
+                break;
+            case 0xC4:
+                TRACE_INS(CNZ);
+                taken = CNZ(state);
+                break;
+            case 0xC5:
+                TRACE_INS(PUSH);
+                TRACE("B\tC\t");
+                taken = PUSH(state, state->bc);
+                break;
+            case 0xC6:
+                TRACE_INS(ADI);
+                taken = ADI(state);
+                break;
+            case 0xC8:
+                TRACE_INS(RZ);
+                taken = RZ(state);
+                break;
+            case 0xC9:
+                TRACE_INS(RET);
+                taken = RET(state);
+                break;
+            case 0xCA:
+                TRACE_INS(JZ);
+                taken = JZ(state);
+                break;
+            case 0xCC:
+                TRACE_INS(CZ);
+                taken = CZ(state);
+                break;
+            case 0xCD:
+                TRACE_INS(CAL);
+                taken = CAL(state);
+                break;
+            case 0xD0:
+                TRACE_INS(RNC);
+                taken = RNC(state);
+                break;
+            case 0xD1:
+                TRACE_INS(POP);
+                TRACE("DE\t");
+                taken = POP(state, &(state->de));
+                break;
+            case 0xD2:
+                TRACE_INS(JNC);
+                taken = JNC(state);
+                break;
+            case 0xD3:
+                TRACE_INS(*OUT);
+                taken = OUT(state);
+                break;
+            case 0xD5:
+                TRACE_INS(PUSH);
+                TRACE("D\tE\t");
+                taken = PUSH(state, state->de);
+                break;
+            case 0xD6:
+                TRACE_INS(SUI);
+                taken = SUI(state);
+                break;
+            case 0xD8:
+                TRACE_INS(RC);
+                taken = RC(state);
+                break;
+            case 0xDA:
+                TRACE_INS(JC);
+                taken = JC(state);
+                break;
+            case 0xDB:
+                TRACE_INS(*IN);
+                taken = IN(state);
+                break;
+            case 0xE1:
+                TRACE_INS(POP);
+                TRACE("H\tL\t");
+                taken = POP(state, &(state->hl));
+                break;
+            case 0xE5:
+                TRACE_INS(PUSH);
+                TRACE("H\tL\t");
+                taken = PUSH(state, state->hl);
+                break;
+            case 0xE6:
+                TRACE_INS(ANI);
+                taken = ANI(state);
+                break;
+            case 0xEB:
+                TRACE_INS(XCHG);
+                TRACE("HL\tDE\t");
+                taken = XCHG(state);
+                break;
+            case 0xF1:
+                TRACE_INS(POPPSW);
+                taken = POPPSW(state);
+                break;
+            case 0xF5:
+                TRACE_INS(PUSHPSW);
+                taken = PUSHPSW(state);
+                break;
+            case 0xF6:
+                TRACE_INS(ORI);
+                taken = ORI(state);
+                break;
+            case 0xFA:
+                TRACE_INS(JM);
+                taken = JM(state);
+                break;
+            case 0xFB:
+                TRACE_INS(EI);
+                taken = EI(state);
+                break;
+            case 0xFE:
+                TRACE_INS(CPI);
+                taken = CPI(state);
+                break;
+            case 0x08:
+            case 0x10:
+            case 0x18:
+            case 0x20:
+            case 0x28:
+            case 0x30:
+            case 0x38:
+            case 0xCB:
+            case 0xD9:
+            case 0xDD:
+            case 0xED:
+            case 0xFD:
+                ABORT(("Alternative opcode used. Aborting...\n"));
+            default:
+                ABORT(("Unrecognized instruction 0x%02x at 0x%04lx\n", state->program[state->pc], state->pc));
+        }
     }
 
     cycle = cycles[instruction >> 4][instruction & 0x0F];
