@@ -22,7 +22,7 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) $<
 
 run: $(TARGET)
-	./$(TARGET) $(DATA)
+	./$(TARGET) $(DATA) 2
 
 clean:
 	rm -f $(TARGET) $(OBJECTS)

@@ -31,11 +31,13 @@
 
 struct options_t {
     const char *bin_name;
+    float scale;
 };
 
 static unsigned char *display;
 static unsigned long long last_duration;
 static struct machine_t *machine;
+static struct options_t options;
 
 static unsigned long long get_ns()
 {
@@ -50,14 +52,27 @@ static void usage()
     fprintf(stderr, "Usage: a.out <ROM FILE>\n");
 }
 
-static void parse_options(int argc, char **argv, struct options_t *options)
+static void parse_options(int argc, char **argv)
 {
     if (argc < 2) {
         usage();
         ABORT(("Invalid options.\n"));
     }
 
-    options->bin_name = argv[1];
+    options.bin_name = argv[1];
+    options.scale = 1.0f;
+
+    if (argc > 2) {
+        options.scale = atof(argv[2]);
+    }
+    if (options.scale < 0.5f) {
+        options.scale = 0.5f;
+    }
+}
+
+static void draw_ptr(int x, int y)
+{
+    glVertex3f((float)x / DISPLAY_WIDTH * 2 - 1.0f, (float)y/ DISPLAY_HEIGHT * 2 - 1.0f, 0.0);
 }
 
 static void draw()
@@ -71,7 +86,8 @@ static void draw()
             unsigned char b = display[l * BYTES_PER_SCANLINE + i];
             for (j = 0; j < 8; ++j) {
                 if ((b & 0x01) != 0) {
-                    glVertex3f(((float)l / DISPLAY_WIDTH * 2 - 1.0f), ((float)(i * 8 + j)/ DISPLAY_HEIGHT * 2 - 1.0f), 0.0);
+                    int y = i * 8 + j;
+                    draw_ptr(l, y);
                 }
                 b >>= 1;
             }
@@ -112,7 +128,8 @@ static void start_gl_loop(int argc, char **argv)
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE);
-    glutInitWindowSize(DISPLAY_WIDTH, DISPLAY_HEIGHT);
+    glutInitWindowSize(DISPLAY_WIDTH * options.scale, DISPLAY_HEIGHT * options.scale);
+    glutInitWindowPosition((glutGet(GLUT_SCREEN_WIDTH)-DISPLAY_WIDTH * options.scale)/2, (glutGet(GLUT_SCREEN_HEIGHT)-DISPLAY_HEIGHT * options.scale)/2);
     glutCreateWindow("Space Invaders");
 
     display = machine->mem + DISPLAY_ADDRESS;
@@ -122,9 +139,7 @@ static void start_gl_loop(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-    struct options_t options;
-
-    parse_options(argc, argv, &options);
+    parse_options(argc, argv);
 
     machine = init_machine(options.bin_name);
 
