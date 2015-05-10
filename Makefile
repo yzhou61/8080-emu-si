@@ -13,7 +13,7 @@ SOURCES  := $(wildcard *.c)
 INCLUDES := $(wildcard *.h)
 OBJECTS  := $(SOURCES:.c=*.o)
 
-.PHONY: run clean obj
+.PHONY: run clean
 
 $(TARGET): $(OBJECTS)
 	$(LD) $(TARGET) $(OBJECTS) $(LDFLAGS)
