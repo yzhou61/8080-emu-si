@@ -51,7 +51,7 @@ static unsigned long long get_ns()
 
 static void usage()
 {
-    fprintf(stderr, "Usage: a.out <ROM FILE>\n");
+    printf("Usage: a.out <ROM FILE>\n");
 }
 
 static void parse_options(int argc, char **argv)
@@ -126,10 +126,45 @@ static void display_loop()
     }
 }
 
-void keyPressed (unsigned char key, int x, int y) {
+static void keyPressed(unsigned char key, int x, int y)
+{
     switch (key) {
         case 0x1B:
             exit(0);
+        case 0x61:
+            keyboard.p1_left = 1;
+            break;
+        case 0x64:
+            keyboard.p1_right = 1;
+            break;
+        case 0x73:
+            keyboard.p1_shoot = 1;
+            break;
+        case 0x77:
+            keyboard.p1_start = 1;
+            break;
+        default:
+            break;
+    }
+}
+
+static void keyUp(unsigned char key, int x, int y)
+{
+    switch (key) {
+        case 0x1B:
+            exit(0);
+        case 0x61:
+            keyboard.p1_left = 0;
+            break;
+        case 0x64:
+            keyboard.p1_right = 0;
+            break;
+        case 0x73:
+            keyboard.p1_shoot = 0;
+            break;
+        case 0x77:
+            keyboard.p1_start = 0;
+            break;
         default:
             break;
     }
@@ -143,6 +178,7 @@ static void start_gl_loop(int argc, char **argv)
     window = glutCreateWindow("Space Invaders");
 
     glutKeyboardFunc(keyPressed);
+    glutKeyboardUpFunc(keyUp);
 
     display = machine->mem + DISPLAY_ADDRESS;
     glutIdleFunc(display_loop);

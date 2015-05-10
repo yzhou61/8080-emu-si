@@ -4,7 +4,15 @@ struct cpu_mem_t {
 };
 
 struct keyboard_t {
-    int esc;
+    unsigned char coin;
+    unsigned char p1_start;
+    unsigned char p1_shoot;
+    unsigned char p1_left;
+    unsigned char p1_right;
+    unsigned char p2_start;
+    unsigned char p2_shoot;
+    unsigned char p2_left;
+    unsigned char p2_right;
 };
 
 struct cpu_mem_t *init_machine(const char *bin_name, struct keyboard_t *keyboard);

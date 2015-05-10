@@ -20,6 +20,8 @@
 #define F1  (0x02)
 #define FC  (0x01)
 
+#define MEM_LOC(loc) state->mem[((loc) & 0x4000) == 0 ? (loc) : ((loc) - 0x2000)]
+
 #define BYTETOBINARYPATTERN "%d%d%d%d%d%d%d%d"
 #define BYTETOBINARY(byte)  \
   (byte & 0x80 ? 1 : 0), \
@@ -31,11 +33,11 @@
   (byte & 0x02 ? 1 : 0), \
   (byte & 0x01 ? 1 : 0)
 
-#define TRACE_INS(name) TRACE("0x%04lx\t%4s\t", state->pc, #name)
+#define TRACE_INS(name) TRACE("%llu:\t0x%04lx\t%4s\t", ++count, state->pc, #name)
 
-#define TRACE_STATE() TRACE("\t\t\t\tpc\tsp\ta\tb\tc\td\te\tSZ0A0P1C\th\tl\tINTR\n"); \
-                      TRACE("\t\t\t\t0x%04lx\t0x%04x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t"BYTETOBINARYPATTERN"\t0x%02x\t0x%02x\t%d\n", \
-                              state->pc, state->sp, state->a, *(state->b), *(state->c), *(state->d), *(state->e), BYTETOBINARY(state->f), *(state->h), *(state->l), state->intr); \
+#define TRACE_STATE() TRACE("\t\t\t\tpc\tsp\ta\tb\tc\td\te\tSZ0A0P1C\th\tl\tINTR\tSHIFT\tSHIFT OFF\n"); \
+                      TRACE("\t\t\t\t0x%04lx\t0x%04x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t"BYTETOBINARYPATTERN"\t0x%02x\t0x%02x\t%d\t0x%04x\t0x%02x\n", \
+                              state->pc, state->sp, state->a, *(state->b), *(state->c), *(state->d), *(state->e), BYTETOBINARY(state->f), *(state->h), *(state->l), state->intr, state->shift_reg, state->shift_reg_offset); \
                       print_stack(state)
 
 struct state_t {
@@ -56,9 +58,14 @@ struct state_t {
     unsigned char *l;
     unsigned char *mem;
     unsigned char intr;
+    unsigned short shift_reg;
+    unsigned char shift_reg_offset;
 };
 
-struct keyboard_t *keyboard;
+static struct keyboard_t *keyboard;
+static int stop = -1;
+static unsigned long long count = 0;
+static unsigned long long total_cycles = 0;
 
 static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
                             { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
@@ -84,7 +91,7 @@ static void print_stack(struct state_t *state)
     TRACE("\t\t\t\t");
 
     for (i = STACK_BOTTOM; i >= state->sp; --i) {
-        TRACE("0x%02x ", state->mem[i]);
+        TRACE("0x%02x ", MEM_LOC(i));
     }
 
     TRACE("\n");
@@ -140,6 +147,8 @@ struct cpu_mem_t *init_machine(const char *bin_name, struct keyboard_t *k)
     state = res->state;
 
     state->intr = 0;
+    state->shift_reg = 0;
+    state->shift_reg_offset = 0;
     state->pc = 0;
     state->sp = STACK_BOTTOM;
     state->a = 0;
@@ -167,6 +176,11 @@ struct cpu_mem_t *init_machine(const char *bin_name, struct keyboard_t *k)
         ABORT(("%p\n", state->program));
     }
 
+    if (0 != mprotect(state->mem + MEM_SIZE, MIRROR_SIZE, PROT_NONE)) {
+        perror("mprotect() failed");
+        ABORT(("%p\n", state->program));
+    }
+
     res->mem = state->mem;
 
     keyboard = k;
@@ -190,7 +204,7 @@ static unsigned char read_8b(struct state_t *state)
 
     ++(state->pc);
 
-    res = state->mem[state->pc];
+    res = MEM_LOC(state->pc);
 
     TRACE("0x%02x\t", res);
 
@@ -201,7 +215,7 @@ static unsigned int read_16b(struct state_t *state)
 {
     unsigned int res;
 
-    res = (state->mem[state->pc + 2] << 8) + state->mem[state->pc + 1];
+    res = (MEM_LOC(state->pc + 2) << 8) + MEM_LOC(state->pc + 1);
 
     state->pc += 2;
 
@@ -239,9 +253,99 @@ static void set_ZSP(struct state_t *state, unsigned char res)
     }
 }
 
+static unsigned char *get_reg(struct state_t *state, unsigned char encoding)
+{
+    switch (encoding) {
+        case 0x00:
+            TRACE("B\t");
+            return state->b;
+        case 0x01:
+            TRACE("C\t");
+            return state->c;
+        case 0x02:
+            TRACE("D\t");
+            return state->d;
+        case 0x03:
+            TRACE("E\t");
+            return state->e;
+        case 0x04:
+            TRACE("H\t");
+            return state->h;
+        case 0x05:
+            TRACE("L\t");
+            return state->l;
+        case 0x06:
+            TRACE("M\t");
+            return &(MEM_LOC(state->hl));
+        case 0x07:
+            TRACE("A\t");
+            return &(state->a);
+        default:
+            ABORT(("Invalid register encoding\n"));
+    }
+
+    return NULL;
+}
+
+static unsigned int *get_dreg(struct state_t *state, unsigned char encoding)
+{
+    switch (encoding) {
+        case 0x00:
+            TRACE("BC\t");
+            return &(state->bc);
+        case 0x01:
+            TRACE("DE\t");
+            return &(state->de);
+        case 0x02:
+            TRACE("HL\t");
+            return &(state->hl);
+        case 0x03:
+            TRACE("SP\t");
+            return &(state->sp);
+        default:
+            ABORT(("Invalid register encoding\n"));
+    }
+
+    return NULL;
+}
+
+static unsigned char get_cond(struct state_t *state, unsigned char encoding)
+{
+    switch (encoding) {
+        case 0x00:
+            TRACE("NZ\t");
+            return ((state->f & FZ) == 0);
+        case 0x01:
+            TRACE("Z\t");
+            return ((state->f & FZ) != 0);
+        case 0x02:
+            TRACE("NC\t");
+            return ((state->f & FC) == 0);
+        case 0x03:
+            TRACE("C\t");
+            return ((state->f & FC) != 0);
+        case 0x04:
+            TRACE("PO\t");
+            return ((state->f & FP) == 0);
+        case 0x05:
+            TRACE("PE\t");
+            return ((state->f & FP) != 0);
+        case 0x06:
+            TRACE("P\t");
+            return ((state->f & FS) == 0);
+        case 0x07:
+            TRACE("M\t");
+            return ((state->f & FS) != 0);
+        default:
+            ABORT(("Invalid condition encoding\n"));
+    }
+
+    return 0;
+}
+
 static void set_A(struct state_t *state, unsigned char before, unsigned char after)
 {
-    if ((before & 0x80) != (after & 0x80)) {
+    if ((before & 0x08) != (after & 0x08)) {
         state->f |= FA;
     } else {
         state->f &= ~FA;
@@ -263,6 +367,12 @@ static void jump_if(struct state_t *state, unsigned char c)
     } else {
         ++(state->pc);
     }
+}
+
+static int PCHL(struct state_t *state)
+{
+    state->pc = state->hl;
+    return 1;
 }
 
 static int JMP(struct state_t *state)
@@ -322,11 +432,19 @@ static void call_if(struct state_t *state, unsigned char c)
     ++(state->pc);
 
     if (c != 0) {
-        state->mem[--state->sp] = ((state->pc >> 8) & 0x00FF);
-        state->mem[--state->sp] = (state->pc & 0x00FF);
+        --state->sp; MEM_LOC(state->sp) = ((state->pc >> 8) & 0x00FF);
+        --state->sp; MEM_LOC(state->sp) = (state->pc & 0x00FF);
 
         state->pc = pc;
     }
+}
+
+static int CX(struct state_t *state, unsigned char instr)
+{
+    unsigned char cond = (instr & 0x38);
+    unsigned char taken = get_cond(state, cond >> 3);
+    call_if(state, taken);
+    return taken;
 }
 
 static int CAL(struct state_t *state)
@@ -335,27 +453,13 @@ static int CAL(struct state_t *state)
     return 1;
 }
 
-static int CZ(struct state_t *state)
-{
-    int c = ((state->f & FZ) != 0);
-    call_if(state, c);
-    return c;
-}
-
-static int CNZ(struct state_t *state)
-{
-    int c = ((state->f & FZ) == 0);
-    call_if(state, c);
-    return c;
-}
-
 static void return_if(struct state_t *state, unsigned char c)
 {
     if (c != 0) {
         unsigned int pc = 0;
 
-        pc = state->mem[state->sp++];
-        pc |= (state->mem[state->sp++] << 8);
+        pc = MEM_LOC(state->sp); ++state->sp;
+        pc |= (MEM_LOC(state->sp) << 8); ++state->sp;
 
         state->pc = pc;
     } else {
@@ -401,7 +505,7 @@ static int LDA(struct state_t *state)
 {
     unsigned int mem = read_16b(state);
 
-    state->a = state->mem[mem];
+    state->a = MEM_LOC(mem);
 
     ++(state->pc);
     return 1;
@@ -411,8 +515,8 @@ static int LHLD(struct state_t *state)
 {
     unsigned int mem = read_16b(state);
 
-    *state->l = state->mem[mem];
-    *state->h = state->mem[mem + 1];
+    *state->l = MEM_LOC(mem);
+    *state->h = MEM_LOC(mem + 1);
 
     ++(state->pc);
     return 1;
@@ -422,8 +526,8 @@ static int SHLD(struct state_t *state)
 {
     unsigned int mem = read_16b(state);
 
-    state->mem[mem] = *state->l;
-    state->mem[mem + 1] = *state->h;
+    MEM_LOC(mem) = *state->l;
+    MEM_LOC(mem + 1) = *state->h;
 
     ++(state->pc);
     return 1;
@@ -431,65 +535,9 @@ static int SHLD(struct state_t *state)
 
 static int LDAX(struct state_t *state, unsigned int reg)
 {
-    state->a = state->mem[reg];
+    state->a = MEM_LOC(reg);
     ++(state->pc);
     return 1;
-}
-
-static unsigned char *get_reg(struct state_t *state, unsigned char encoding)
-{
-    switch (encoding) {
-        case 0x00:
-            TRACE("B\t");
-            return state->b;
-        case 0x01:
-            TRACE("C\t");
-            return state->c;
-        case 0x02:
-            TRACE("D\t");
-            return state->d;
-        case 0x03:
-            TRACE("E\t");
-            return state->e;
-        case 0x04:
-            TRACE("H\t");
-            return state->h;
-        case 0x05:
-            TRACE("L\t");
-            return state->l;
-        case 0x06:
-            TRACE("M\t");
-            return &(state->mem[state->hl]);
-        case 0x07:
-            TRACE("A\t");
-            return &(state->a);
-        default:
-            ABORT(("Invalid register encoding\n"));
-    }
-
-    return NULL;
-}
-
-static unsigned int *get_dreg(struct state_t *state, unsigned char encoding)
-{
-    switch (encoding) {
-        case 0x00:
-            TRACE("BC\t");
-            return &(state->bc);
-        case 0x01:
-            TRACE("DE\t");
-            return &(state->de);
-        case 0x02:
-            TRACE("HL\t");
-            return &(state->hl);
-        case 0x03:
-            TRACE("SP\t");
-            return &(state->sp);
-        default:
-            ABORT(("Invalid register encoding\n"));
-    }
-
-    return NULL;
 }
 
 static int MOV(struct state_t *state, unsigned char instr)
@@ -571,7 +619,7 @@ static int SBI(struct state_t *state)
 static int MVIM(struct state_t *state)
 {
     unsigned char i = read_8b(state);
-    state->mem[state->hl] = i;
+    MEM_LOC(state->hl) = i;
     ++(state->pc);
     return 1;
 }
@@ -620,15 +668,7 @@ static int CPI(struct state_t *state)
 {
     unsigned char i = read_8b(state);
 
-    if (state->a < i) {
-        state->f |=  FC;
-    } else {
-        state->f &= ~FC;
-    }
-
-    state->a -= i;
-
-    set_ZSP(state, state->a);
+    sub(state, state->a, i);
 
     ++(state->pc);
     return 1;
@@ -636,8 +676,8 @@ static int CPI(struct state_t *state)
 
 static int PUSH(struct state_t *state, unsigned int reg)
 {
-    state->mem[--state->sp] = ((reg >> 8) & 0x00FF);
-    state->mem[--state->sp] = (reg & 0x00FF);
+    --state->sp; MEM_LOC(state->sp) = ((reg >> 8) & 0x00FF);
+    --state->sp; MEM_LOC(state->sp) = (reg & 0x00FF);
 
     ++(state->pc);
     return 1;
@@ -645,8 +685,8 @@ static int PUSH(struct state_t *state, unsigned int reg)
 
 static int PUSHPSW(struct state_t *state)
 {
-    state->mem[--state->sp] = state->a;
-    state->mem[--state->sp] = state->f;
+    --state->sp; MEM_LOC(state->sp) = state->a;
+    --state->sp; MEM_LOC(state->sp) = state->f;
 
     ++(state->pc);
     return 1;
@@ -655,8 +695,8 @@ static int PUSHPSW(struct state_t *state)
 static int POP(struct state_t *state, unsigned int *reg)
 {
     *reg = 0;
-    *reg = state->mem[state->sp++];
-    *reg |= state->mem[state->sp++] << 8;
+    *reg = MEM_LOC(state->sp); ++state->sp;
+    *reg |= MEM_LOC(state->sp) << 8; ++state->sp;
 
     ++(state->pc);
     return 1;
@@ -664,8 +704,24 @@ static int POP(struct state_t *state, unsigned int *reg)
 
 static int POPPSW(struct state_t *state)
 {
-    state->f = state->mem[state->sp++];
-    state->a = state->mem[state->sp++];
+    state->f = MEM_LOC(state->sp); ++state->sp;
+    state->a = MEM_LOC(state->sp); ++state->sp;
+
+    ++(state->pc);
+    return 1;
+}
+
+static int XTHL(struct state_t *state)
+{
+    unsigned char t;
+
+    t = *state->l;
+    *state->l = MEM_LOC(state->sp);
+    MEM_LOC(state->sp) = t;
+
+    t = *state->h;
+    *state->h = MEM_LOC(state->sp + 1);
+    MEM_LOC(state->sp + 1) = t;
 
     ++(state->pc);
     return 1;
@@ -704,9 +760,19 @@ static int XCHG(struct state_t *state)
 // TODO
 static int IN(struct state_t *state)
 {
-    read_8b(state);
+    unsigned char i = read_8b(state);
 
-    state->a = 0;
+    switch (i) {
+        case 1:
+            state->a = (keyboard->p1_start << 2);
+            break;
+        case 3:
+            state->a = ((state->shift_reg >> (8 - state->shift_reg_offset)) & 0xFF);
+            break;
+        default:
+            state->a = 0;
+            break;
+    }
 
     ++(state->pc);
     return 1;
@@ -715,7 +781,19 @@ static int IN(struct state_t *state)
 // TODO
 static int OUT(struct state_t *state)
 {
-    read_8b(state);
+    unsigned char i = read_8b(state);
+
+    switch (i) {
+        case 2:
+            state->shift_reg_offset = (state->a & 0x07);
+            break;
+        case 4:
+            state->shift_reg >>= 8;
+            state->shift_reg |= ((int)state->a << 8);
+            break;
+        default:
+            break;
+    }
 
     ++(state->pc);
     return 1;
@@ -858,6 +936,14 @@ static int ORI(struct state_t *state)
     return 1;
 }
 
+static int CMA(struct state_t *state)
+{
+    state->a = ~(state->a);
+
+    ++(state->pc);
+    return 1;
+}
+
 static int ADI(struct state_t *state)
 {
     unsigned char b = read_8b(state);
@@ -903,7 +989,7 @@ static int SUI(struct state_t *state)
 static int STA(struct state_t *state)
 {
     unsigned int mem = read_16b(state);
-    state->mem[mem] = state->a;
+    MEM_LOC(mem) = state->a;
 
     ++(state->pc);
     return 1;
@@ -955,7 +1041,6 @@ static int execute_one(struct state_t *state)
     unsigned char instruction;
     int cycle;
     int taken;
-    int stop = 0;
 
     if (state->pc > state->program_size) {
         ABORT(("pc out of bound! %lu\n", state->pc));
@@ -1016,6 +1101,10 @@ static int execute_one(struct state_t *state)
     // 00XX X101
         TRACE_INS(DCR);
         taken = INR(state, instruction, 0);
+    } else if ((instruction & 0xC7) == 0xC4) {
+    // 11XX X100
+        TRACE_INS(CX);
+        taken = CX(state, instruction);
     } else {
         switch(instruction) {
             case 0x00:
@@ -1121,6 +1210,10 @@ static int execute_one(struct state_t *state)
                 TRACE("L\t");
                 taken = MVI(state, state->l);
                 break;
+            case 0x2F:
+                TRACE_INS(CMA);
+                taken = CMA(state);
+                break;
             case 0x31:
                 TRACE_INS(LXI);
                 TRACE("SP\t");
@@ -1164,10 +1257,6 @@ static int execute_one(struct state_t *state)
                 TRACE_INS(JMP);
                 taken = JMP(state);
                 break;
-            case 0xC4:
-                TRACE_INS(CNZ);
-                taken = CNZ(state);
-                break;
             case 0xC5:
                 TRACE_INS(PUSH);
                 TRACE("B\tC\t");
@@ -1189,10 +1278,6 @@ static int execute_one(struct state_t *state)
                 TRACE_INS(JZ);
                 taken = JZ(state);
                 break;
-            case 0xCC:
-                TRACE_INS(CZ);
-                taken = CZ(state);
-                break;
             case 0xCD:
                 TRACE_INS(CAL);
                 taken = CAL(state);
@@ -1211,7 +1296,7 @@ static int execute_one(struct state_t *state)
                 taken = JNC(state);
                 break;
             case 0xD3:
-                TRACE_INS(*OUT);
+                TRACE_INS(OUT);
                 taken = OUT(state);
                 break;
             case 0xD5:
@@ -1232,7 +1317,7 @@ static int execute_one(struct state_t *state)
                 taken = JC(state);
                 break;
             case 0xDB:
-                TRACE_INS(*IN);
+                TRACE_INS(IN);
                 taken = IN(state);
                 break;
             case 0xDE:
@@ -1244,6 +1329,10 @@ static int execute_one(struct state_t *state)
                 TRACE("H\tL\t");
                 taken = POP(state, &(state->hl));
                 break;
+            case 0xE3:
+                TRACE_INS(XTHL);
+                taken = XTHL(state);
+                break;
             case 0xE5:
                 TRACE_INS(PUSH);
                 TRACE("H\tL\t");
@@ -1252,6 +1341,10 @@ static int execute_one(struct state_t *state)
             case 0xE6:
                 TRACE_INS(ANI);
                 taken = ANI(state);
+                break;
+            case 0xE9:
+                TRACE_INS(PCHL);
+                taken = PCHL(state);
                 break;
             case 0xEB:
                 TRACE_INS(XCHG);
@@ -1294,7 +1387,7 @@ static int execute_one(struct state_t *state)
             case 0xDD:
             case 0xED:
             case 0xFD:
-                ABORT(("Alternative opcode used. Aborting...\n"));
+                ABORT(("Alternative opcode used (0x%02x). Aborting...\n", instruction));
             default:
                 ABORT(("Unrecognized instruction 0x%02x at 0x%04lx\n", state->program[state->pc], state->pc));
         }
@@ -1311,11 +1404,12 @@ static int execute_one(struct state_t *state)
     if (cycle <= 0 || cycle >= 20) {
         ABORT(("cycle number incorrect!\n"));
     }
-    TRACE("cycle: %d\n", cycle);
+    total_cycles += cycle;
+    TRACE("cycle: %d/%llu\n", cycle, total_cycles);
 
     TRACE_STATE();
 
-    if (stop) {
+    if (stop == 0) {
         exit(1);
     }
     return cycle;
@@ -1329,8 +1423,8 @@ void generate_intr(struct cpu_mem_t *machine, int intr_num)
         return;
     }
 
-    state->mem[--state->sp] = ((state->pc >> 8) & 0x00FF);
-    state->mem[--state->sp] = (state->pc & 0x00FF);
+    --state->sp; MEM_LOC(state->sp) = ((state->pc >> 8) & 0x00FF);
+    --state->sp; MEM_LOC(state->sp) = (state->pc & 0x00FF);
 
     state->pc = 0x08 * intr_num;
 }
