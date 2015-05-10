@@ -58,6 +58,8 @@ struct state_t {
     unsigned char intr;
 };
 
+struct keyboard_t *keyboard;
+
 static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
                             { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
                             { 4, 10, 16, 5, 5, 5, 7, 4, 4, 10, 16, 5, 5, 5, 7, 4, },
@@ -121,12 +123,12 @@ static long init_program(const char *name, unsigned char *buffer)
     return size;
 }
 
-struct machine_t *init_machine(const char *bin_name)
+struct cpu_mem_t *init_machine(const char *bin_name, struct keyboard_t *k)
 {
-    struct machine_t *res;
+    struct cpu_mem_t *res;
     struct state_t *state;
 
-    res = (struct machine_t *)malloc(sizeof(struct machine_t));
+    res = (struct cpu_mem_t *)malloc(sizeof(struct cpu_mem_t));
     if (res == NULL) {
         ABORT(("OOM\n"));
     }
@@ -167,12 +169,16 @@ struct machine_t *init_machine(const char *bin_name)
 
     res->mem = state->mem;
 
+    keyboard = k;
+    memset(keyboard, 0, sizeof(*keyboard));
+
     return res;
 }
 
-void deinit_machine(struct machine_t *machine)
+void deinit_machine(struct cpu_mem_t *machine)
 {
     struct state_t *state = (struct state_t *)machine->state;
+    mprotect(state->program, ROM_SIZE, PROT_READ | PROT_WRITE);
     free(state->mem);
     free(state);
     free(machine);
@@ -1315,7 +1321,7 @@ static int execute_one(struct state_t *state)
     return cycle;
 }
 
-void generate_intr(struct machine_t *machine, int intr_num)
+void generate_intr(struct cpu_mem_t *machine, int intr_num)
 {
     struct state_t *state = (struct state_t *)machine->state;
 
@@ -1329,7 +1335,7 @@ void generate_intr(struct machine_t *machine, int intr_num)
     state->pc = 0x08 * intr_num;
 }
 
-void execute(struct machine_t *machine, int cycles)
+void execute(struct cpu_mem_t *machine, int cycles)
 {
     int cycle = 0;
     struct state_t *state = (struct state_t *)machine->state;

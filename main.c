@@ -36,8 +36,10 @@ struct options_t {
 
 static unsigned char *display;
 static unsigned long long last_duration;
-static struct machine_t *machine;
+static struct cpu_mem_t *machine;
 static struct options_t options;
+static struct keyboard_t keyboard;
+static int window;
 
 static unsigned long long get_ns()
 {
@@ -114,7 +116,7 @@ static void display_loop()
 
     generate_intr(machine, 2);
 
-    printf("Last frame took %llu to render\n", last_duration);
+    //printf("Last frame took %llu to render\n", last_duration);
 
     now = get_ns();
     last_duration = now - then;
@@ -124,28 +126,46 @@ static void display_loop()
     }
 }
 
+void keyPressed (unsigned char key, int x, int y) {
+    switch (key) {
+        case 0x1B:
+            exit(0);
+        default:
+            break;
+    }
+}
+
 static void start_gl_loop(int argc, char **argv)
 {
-    glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE);
     glutInitWindowSize(DISPLAY_WIDTH * options.scale, DISPLAY_HEIGHT * options.scale);
     glutInitWindowPosition((glutGet(GLUT_SCREEN_WIDTH)-DISPLAY_WIDTH * options.scale)/2, (glutGet(GLUT_SCREEN_HEIGHT)-DISPLAY_HEIGHT * options.scale)/2);
-    glutCreateWindow("Space Invaders");
+    window = glutCreateWindow("Space Invaders");
+
+    glutKeyboardFunc(keyPressed);
 
     display = machine->mem + DISPLAY_ADDRESS;
     glutIdleFunc(display_loop);
     glutMainLoop();
 }
 
+static void exit_handler(void)
+{
+    deinit_machine(machine);
+    glutDestroyWindow(window);
+}
+
 int main(int argc, char **argv)
 {
+    glutInit(&argc, argv);
+
     parse_options(argc, argv);
 
-    machine = init_machine(options.bin_name);
+    machine = init_machine(options.bin_name, &keyboard);
+
+    atexit(exit_handler);
 
     start_gl_loop(argc, argv);
-
-    deinit_machine(machine);
 
     return 0;
 }
