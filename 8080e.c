@@ -6,8 +6,7 @@
 #include <sys/mman.h>
 
 #define MEM_SIZE (0x4000)
-// TODO Allow some buffer space after the mem, to avoid segfaults
-#define MIRROR_SIZE (0x1000)
+#define MIRROR_SIZE (0x4000)
 #define STACK_BOTTOM (0x2400)
 #define ROM_SIZE (0x2000)
 
@@ -205,7 +204,6 @@ static unsigned char read_8b(struct state_t *state)
     unsigned char res;
 
     ++(state->pc);
-
     res = MEM_LOC(state->pc);
 
     TRACE("0x%02x\t", res);
@@ -215,11 +213,13 @@ static unsigned char read_8b(struct state_t *state)
 
 static unsigned short read_16b(struct state_t *state)
 {
-    unsigned int res;
+    unsigned short res;
 
-    res = (MEM_LOC(state->pc + 2) << 8) + MEM_LOC(state->pc + 1);
+    ++(state->pc);
+    res = MEM_LOC(state->pc);
 
-    state->pc += 2;
+    ++(state->pc);
+    res |= (MEM_LOC(state->pc) << 8);
 
     TRACE("0x%04x\t", res);
 
@@ -347,16 +347,28 @@ static unsigned char get_cond(struct state_t *state, unsigned char encoding)
 
 static void set_A(struct state_t *state, unsigned char before, unsigned char after)
 {
-    if ((before & 0x08) != (after & 0x08)) {
+    // TODO
+    /*
+    if ((before & 0x10) != (after & 0x10)) {
         state->f |= FA;
     } else {
         state->f &= ~FA;
     }
+    */
 }
 
+// ================= SPECIAL ====================
 static int NOP(struct state_t *state)
 {
     ++(state->pc);
+    return 1;
+}
+
+// ================= BRANCH ====================
+
+static int PCHL(struct state_t *state)
+{
+    state->pc = state->hl;
     return 1;
 }
 
@@ -364,17 +376,11 @@ static void jump_if(struct state_t *state, unsigned char c)
 {
     unsigned short pc = read_16b(state);
 
-    if (c != 0) {
+    if (c) {
         state->pc = pc;
     } else {
         ++(state->pc);
     }
-}
-
-static int PCHL(struct state_t *state)
-{
-    state->pc = state->hl;
-    return 1;
 }
 
 static int JX(struct state_t *state, unsigned char instr)
@@ -391,32 +397,13 @@ static int JMP(struct state_t *state)
     return 1;
 }
 
-static int LXI(struct state_t *state, unsigned char instr)
-{
-    unsigned char dreg = (instr & 0x30) >> 4;
-
-    *get_dreg(state, dreg) = read_16b(state);
-
-    ++(state->pc);
-    return 1;
-}
-
-static int MVI(struct state_t *state, unsigned char instr)
-{
-    unsigned char reg = (instr & 0x38);
-    *get_reg(state, (reg >> 3)) = read_8b(state);
-
-    ++(state->pc);
-    return 1;
-}
-
 static void call_if(struct state_t *state, unsigned char c)
 {
     unsigned short pc = read_16b(state);
 
     ++(state->pc);
 
-    if (c != 0) {
+    if (c) {
         --state->sp; MEM_LOC(state->sp) = ((state->pc >> 8) & 0x00FF);
         --state->sp; MEM_LOC(state->sp) = (state->pc & 0x00FF);
 
@@ -440,7 +427,7 @@ static int CAL(struct state_t *state)
 
 static void return_if(struct state_t *state, unsigned char c)
 {
-    if (c != 0) {
+    if (c) {
         unsigned int pc = 0;
 
         pc = MEM_LOC(state->sp); ++state->sp;
@@ -463,6 +450,27 @@ static int RX(struct state_t *state, unsigned char instr)
 static int RET(struct state_t *state)
 {
     return_if(state, 1);
+    return 1;
+}
+
+// ================= XFER ====================
+
+static int LXI(struct state_t *state, unsigned char instr)
+{
+    unsigned char dreg = (instr & 0x30);
+
+    *get_dreg(state, (dreg >> 4)) = read_16b(state);
+
+    ++(state->pc);
+    return 1;
+}
+
+static int MVI(struct state_t *state, unsigned char instr)
+{
+    unsigned char reg = (instr & 0x38);
+    *get_reg(state, (reg >> 3)) = read_8b(state);
+
+    ++(state->pc);
     return 1;
 }
 
@@ -989,6 +997,7 @@ static int STC(struct state_t *state)
     return 1;
 }
 
+/*
 static int DAA(struct state_t *state)
 {
     if ((state->a & 0x0F) > 9 || (state->f & FA)) {
@@ -1002,6 +1011,7 @@ static int DAA(struct state_t *state)
     ++(state->pc);
     return 1;
 }
+*/
 
 static int execute_one(struct state_t *state)
 {
@@ -1128,10 +1138,12 @@ static int execute_one(struct state_t *state)
                 TRACE_INS(SHLD);
                 taken = SHLD(state);
                 break;
+                /*
             case 0x27:
                 TRACE_INS(DAA);
                 taken = DAA(state);
                 break;
+                */
             case 0x2A:
                 TRACE_INS(LHLD);
                 taken = LHLD(state);
