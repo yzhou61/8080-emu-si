@@ -34,7 +34,7 @@
   (byte & 0x02 ? 1 : 0), \
   (byte & 0x01 ? 1 : 0)
 
-#define TRACE_INS(name) TRACE("%llu:\t0x%04x\t%4s\t", ++count, state->pc, #name)
+#define TRACE_INS(name) TRACE("%llu:\t0x%04x\t%4s\t", ++count, state->pc - 1, #name)
 
 #define TRACE_STATE() TRACE("\t\t\t\tpc\tsp\ta\tb\tc\td\te\tSZ0A0P1C\th\tl\tINTR\tSHIFT\tSHIFT OFF\n"); \
                       TRACE("\t\t\t\t0x%04x\t0x%04x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t"BYTETOBINARYPATTERN"\t0x%02x\t0x%02x\t%d\t0x%04x\t0x%02x\n", \
@@ -203,8 +203,8 @@ static unsigned char read_8b(struct state_t *state)
 {
     unsigned char res;
 
-    ++(state->pc);
     res = MEM_LOC(state->pc);
+    ++(state->pc);
 
     TRACE("0x%02x\t", res);
 
@@ -215,11 +215,11 @@ static unsigned short read_16b(struct state_t *state)
 {
     unsigned short res;
 
-    ++(state->pc);
     res = MEM_LOC(state->pc);
-
     ++(state->pc);
+
     res |= (MEM_LOC(state->pc) << 8);
+    ++(state->pc);
 
     TRACE("0x%04x\t", res);
 
@@ -358,18 +358,15 @@ static void set_A(struct state_t *state, unsigned char before, unsigned char aft
 }
 
 // ================= SPECIAL ====================
-static int NOP(struct state_t *state)
+static void NOP(struct state_t *state)
 {
-    ++(state->pc);
-    return 1;
 }
 
 // ================= BRANCH ====================
 
-static int PCHL(struct state_t *state)
+static void PCHL(struct state_t *state)
 {
     state->pc = state->hl;
-    return 1;
 }
 
 static void jump_if(struct state_t *state, unsigned char c)
@@ -378,30 +375,24 @@ static void jump_if(struct state_t *state, unsigned char c)
 
     if (c) {
         state->pc = pc;
-    } else {
-        ++(state->pc);
     }
 }
 
-static int JX(struct state_t *state, unsigned char instr)
+static void JX(struct state_t *state, unsigned char instr)
 {
     unsigned char cond = (instr & 0x38);
     unsigned char taken = get_cond(state, cond >> 3);
     jump_if(state, taken);
-    return 1;
 }
 
-static int JMP(struct state_t *state)
+static void JMP(struct state_t *state)
 {
     jump_if(state, 1);
-    return 1;
 }
 
 static void call_if(struct state_t *state, unsigned char c)
 {
     unsigned short pc = read_16b(state);
-
-    ++(state->pc);
 
     if (c) {
         --state->sp; MEM_LOC(state->sp) = ((state->pc >> 8) & 0x00FF);
@@ -419,10 +410,9 @@ static int CX(struct state_t *state, unsigned char instr)
     return taken;
 }
 
-static int CAL(struct state_t *state)
+static void CAL(struct state_t *state)
 {
     call_if(state, 1);
-    return 1;
 }
 
 static void return_if(struct state_t *state, unsigned char c)
@@ -434,8 +424,6 @@ static void return_if(struct state_t *state, unsigned char c)
         pc |= (MEM_LOC(state->sp) << 8); ++state->sp;
 
         state->pc = pc;
-    } else {
-        ++(state->pc);
     }
 }
 
@@ -447,73 +435,51 @@ static int RX(struct state_t *state, unsigned char instr)
     return taken;
 }
 
-static int RET(struct state_t *state)
+static void RET(struct state_t *state)
 {
     return_if(state, 1);
-    return 1;
 }
 
 // ================= XFER ====================
 
-static int LXI(struct state_t *state, unsigned char instr)
+static void LXI(struct state_t *state, unsigned char instr)
 {
     unsigned char dreg = (instr & 0x30);
-
     *get_dreg(state, (dreg >> 4)) = read_16b(state);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int MVI(struct state_t *state, unsigned char instr)
+static void MVI(struct state_t *state, unsigned char instr)
 {
     unsigned char reg = (instr & 0x38);
     *get_reg(state, (reg >> 3)) = read_8b(state);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int LDA(struct state_t *state)
+static void LDA(struct state_t *state)
 {
     unsigned short mem = read_16b(state);
-
     state->a = MEM_LOC(mem);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int LHLD(struct state_t *state)
+static void LHLD(struct state_t *state)
 {
     unsigned short mem = read_16b(state);
-
     *state->l = MEM_LOC(mem);
     *state->h = MEM_LOC(mem + 1);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int SHLD(struct state_t *state)
+static void SHLD(struct state_t *state)
 {
     unsigned short mem = read_16b(state);
-
     MEM_LOC(mem) = *state->l;
     MEM_LOC(mem + 1) = *state->h;
-
-    ++(state->pc);
-    return 1;
 }
 
-static int LDAX(struct state_t *state, unsigned int reg)
+static void LDAX(struct state_t *state, unsigned int reg)
 {
     state->a = MEM_LOC(reg);
-    ++(state->pc);
-    return 1;
 }
 
-static int MOV(struct state_t *state, unsigned char instr)
+static void MOV(struct state_t *state, unsigned char instr)
 {
     unsigned char dst, src;
 
@@ -521,8 +487,6 @@ static int MOV(struct state_t *state, unsigned char instr)
     src = (instr & 0x07);
 
     *get_reg(state, dst) = *get_reg(state, src);
-    ++(state->pc);
-    return 1;
 }
 
 static unsigned char add(struct state_t *state, unsigned int a, unsigned int b)
@@ -557,78 +521,48 @@ static unsigned char sub(struct state_t *state, unsigned int a, unsigned int b)
     return res;
 }
 
-static int ADD(struct state_t *state, unsigned char instr, int carry)
+static void ADD(struct state_t *state, unsigned char instr, int carry)
 {
     unsigned char src;
-
     src = (instr & 0x07);
-
     state->a = add(state, state->a, (int)*get_reg(state, src) + (carry ? CARRY : 0));
-
-    ++(state->pc);
-    return 1;
 }
 
-static int SUB(struct state_t *state, unsigned char instr, int carry)
+static void SUB(struct state_t *state, unsigned char instr, int carry)
 {
     unsigned char src;
-
     src = (instr & 0x07);
-
     state->a = sub(state, state->a, (int)*get_reg(state, src) + (carry ? CARRY : 0));
-
-    ++(state->pc);
-    return 1;
 }
 
-static int SBI(struct state_t *state)
+static void SBI(struct state_t *state)
 {
     state->a = sub(state, state->a, read_8b(state) + CARRY);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int CMP(struct state_t *state, unsigned char instr)
+static void CMP(struct state_t *state, unsigned char instr)
 {
     unsigned char src;
-
     src = (instr & 0x07);
-
     sub(state, state->a, *get_reg(state, src));
-
-    ++(state->pc);
-    return 1;
 }
 
-static int CPI(struct state_t *state)
+static void CPI(struct state_t *state)
 {
     unsigned char i = read_8b(state);
-
     sub(state, state->a, i);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int INX(struct state_t *state, unsigned char instr)
+static void INX(struct state_t *state, unsigned char instr)
 {
     unsigned char dreg = (instr & 0x30) >> 4;
-
     ++(*get_dreg(state, dreg));
-
-    ++(state->pc);
-    return 1;
 }
 
-static int DCX(struct state_t *state, unsigned char instr)
+static void DCX(struct state_t *state, unsigned char instr)
 {
     unsigned char dreg = (instr & 0x30) >> 4;
-
     --(*get_dreg(state, dreg));
-
-    ++(state->pc);
-    return 1;
 }
 
 static unsigned char inc_dec(struct state_t *state, unsigned char i, int p)
@@ -643,55 +577,39 @@ static unsigned char inc_dec(struct state_t *state, unsigned char i, int p)
     return res;
 }
 
-static int INR(struct state_t *state, unsigned char instr, int inc)
+static void INR(struct state_t *state, unsigned char instr, int inc)
 {
     unsigned char enc = (instr & 0x38);
     unsigned char *reg = get_reg(state, enc >> 3);
-
     *reg = inc_dec(state, *reg, (inc ? 1 : -1));
-
-    ++(state->pc);
-    return 1;
 }
 
-static int PUSH(struct state_t *state, unsigned int reg)
+static void PUSH(struct state_t *state, unsigned int reg)
 {
     --state->sp; MEM_LOC(state->sp) = ((reg >> 8) & 0x00FF);
     --state->sp; MEM_LOC(state->sp) = (reg & 0x00FF);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int PUSHPSW(struct state_t *state)
+static void PUSHPSW(struct state_t *state)
 {
     --state->sp; MEM_LOC(state->sp) = state->a;
     --state->sp; MEM_LOC(state->sp) = state->f;
-
-    ++(state->pc);
-    return 1;
 }
 
-static int POP(struct state_t *state, unsigned short *reg)
+static void POP(struct state_t *state, unsigned short *reg)
 {
     *reg = 0;
     *reg = MEM_LOC(state->sp); ++state->sp;
     *reg |= (MEM_LOC(state->sp) << 8); ++state->sp;
-
-    ++(state->pc);
-    return 1;
 }
 
-static int POPPSW(struct state_t *state)
+static void POPPSW(struct state_t *state)
 {
     state->f = MEM_LOC(state->sp); ++state->sp;
     state->a = MEM_LOC(state->sp); ++state->sp;
-
-    ++(state->pc);
-    return 1;
 }
 
-static int XTHL(struct state_t *state)
+static void XTHL(struct state_t *state)
 {
     unsigned char t;
 
@@ -702,12 +620,9 @@ static int XTHL(struct state_t *state)
     t = *state->h;
     *state->h = MEM_LOC(state->sp + 1);
     MEM_LOC(state->sp + 1) = t;
-
-    ++(state->pc);
-    return 1;
 }
 
-static int DAD(struct state_t *state, unsigned char instr)
+static void DAD(struct state_t *state, unsigned char instr)
 {
     unsigned char dreg = (instr & 0x30) >> 4;
     unsigned int res = state->hl + *get_dreg(state, dreg);
@@ -719,25 +634,19 @@ static int DAD(struct state_t *state, unsigned char instr)
     }
 
     state->hl = (res & 0xFFFF);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int XCHG(struct state_t *state)
+static void XCHG(struct state_t *state)
 {
     unsigned int tmp;
 
     tmp = state->hl;
     state->hl = state->de;
     state->de = tmp;
-
-    ++(state->pc);
-    return 1;
 }
 
 // TODO
-static int IN(struct state_t *state)
+static void IN(struct state_t *state)
 {
     unsigned char i = read_8b(state);
 
@@ -755,13 +664,10 @@ static int IN(struct state_t *state)
             state->a = 0;
             break;
     }
-
-    ++(state->pc);
-    return 1;
 }
 
 // TODO
-static int OUT(struct state_t *state)
+static void OUT(struct state_t *state)
 {
     unsigned char i = read_8b(state);
 
@@ -776,12 +682,9 @@ static int OUT(struct state_t *state)
         default:
             break;
     }
-
-    ++(state->pc);
-    return 1;
 }
 
-static int RLC(struct state_t *state)
+static void RLC(struct state_t *state)
 {
     unsigned int c = ((state->a & 0x80) != 0);
 
@@ -791,12 +694,9 @@ static int RLC(struct state_t *state)
 
     state->f &= ~FC;
     state->f |= (FC * c);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int RRC(struct state_t *state)
+static void RRC(struct state_t *state)
 {
     unsigned int c = (state->a & 0x01);
 
@@ -806,12 +706,9 @@ static int RRC(struct state_t *state)
 
     state->f &= ~FC;
     state->f |= (FC * c);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int RAR(struct state_t *state)
+static void RAR(struct state_t *state)
 {
     unsigned int c = (state->a & 0x01);
 
@@ -821,9 +718,6 @@ static int RAR(struct state_t *state)
 
     state->f &= ~FC;
     state->f |= (FC * c);
-
-    ++(state->pc);
-    return 1;
 }
 
 static unsigned char and(struct state_t *state, unsigned char a, unsigned char b, int clear_a)
@@ -867,71 +761,45 @@ static unsigned char xor(struct state_t *state, unsigned char a, unsigned char b
     return res;
 }
 
-static int ANI(struct state_t *state)
+static void ANI(struct state_t *state)
 {
     unsigned char b = read_8b(state);
-
     state->a = and(state, state->a, b, 1);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int ANA(struct state_t *state, unsigned char instr)
+static void ANA(struct state_t *state, unsigned char instr)
 {
     unsigned char src;
-
     src = (instr & 0x07);
-
     state->a = and(state, state->a, *get_reg(state, src), 0);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int ORA(struct state_t *state, unsigned char instr)
+static void ORA(struct state_t *state, unsigned char instr)
 {
     unsigned char src;
-
     src = (instr & 0x07);
-
     state->a = or(state, state->a, *get_reg(state, src));
-
-    ++(state->pc);
-    return 1;
 }
 
-static int ORI(struct state_t *state)
+static void ORI(struct state_t *state)
 {
     unsigned char i = read_8b(state);
-
     state->a = or(state, state->a, i);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int XRA(struct state_t *state, unsigned char instr)
+static void XRA(struct state_t *state, unsigned char instr)
 {
     unsigned char src;
-
     src = (instr & 0x07);
-
     state->a = xor(state, state->a, *get_reg(state, src));
-
-    ++(state->pc);
-    return 1;
 }
 
-static int CMA(struct state_t *state)
+static void CMA(struct state_t *state)
 {
     state->a = ~(state->a);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int ADI(struct state_t *state)
+static void ADI(struct state_t *state)
 {
     unsigned char b = read_8b(state);
     unsigned int sum;
@@ -947,12 +815,9 @@ static int ADI(struct state_t *state)
     } else {
         state->f &= ~FC;
     }
-
-    ++(state->pc);
-    return 1;
 }
 
-static int SUI(struct state_t *state)
+static void SUI(struct state_t *state)
 {
     unsigned char b = read_8b(state);
     unsigned char sum;
@@ -968,37 +833,26 @@ static int SUI(struct state_t *state)
 
     state->a = sum;
     set_ZSP(state, state->a);
-
-    ++(state->pc);
-    return 1;
 }
 
-static int STA(struct state_t *state)
+static void STA(struct state_t *state)
 {
     unsigned short mem = read_16b(state);
     MEM_LOC(mem) = state->a;
-
-    ++(state->pc);
-    return 1;
 }
 
-static int EI(struct state_t *state)
+static void EI(struct state_t *state)
 {
     state->intr = 1;
-
-    ++(state->pc);
-    return 1;
 }
 
-static int STC(struct state_t *state)
+static void STC(struct state_t *state)
 {
     state->f |= FC;
-    ++(state->pc);
-    return 1;
 }
 
 /*
-static int DAA(struct state_t *state)
+static void DAA(struct state_t *state)
 {
     if ((state->a & 0x0F) > 9 || (state->f & FA)) {
         state->a = add(state, state->a, 0x06);
@@ -1007,9 +861,6 @@ static int DAA(struct state_t *state)
     if ((state->a & 0xF0) > 0x90 || (state->f & FC)) {
         state->a = add(state, state->a, 0x60);
     }
-
-    ++(state->pc);
-    return 1;
 }
 */
 
@@ -1017,13 +868,14 @@ static int execute_one(struct state_t *state)
 {
     unsigned char instruction;
     int cycle;
-    int taken;
+    int taken = 1;
 
     if (state->pc > state->program_size) {
         ABORT(("pc out of bound! %u\n", state->pc));
     }
 
     instruction = state->program[state->pc];
+    ++(state->pc);
 
     if ((instruction & 0xC0) == 0x40) {
     // 01XX XXXX
@@ -1033,63 +885,63 @@ static int execute_one(struct state_t *state)
         }
 
         TRACE_INS(MOV);
-        taken = MOV(state, instruction);
+        MOV(state, instruction);
     } else if ((instruction & 0xF8) == 0x80) {
     // 1000 0XXX
         TRACE_INS(ADD);
-        taken = ADD(state, instruction, 0);
+        ADD(state, instruction, 0);
     } else if ((instruction & 0xF8) == 0x88) {
     // 1000 1XXX
         TRACE_INS(ADC);
-        taken = ADD(state, instruction, 1);
+        ADD(state, instruction, 1);
     } else if ((instruction & 0xF8) == 0x90) {
     // 1001 0XXX
         TRACE_INS(SUB);
-        taken = SUB(state, instruction, 0);
+        SUB(state, instruction, 0);
     } else if ((instruction & 0xF8) == 0x98) {
     // 1001 1XXX
         TRACE_INS(SBB);
-        taken = SUB(state, instruction, 1);
+        SUB(state, instruction, 1);
     } else if ((instruction & 0xF8) == 0xA0) {
     // 1010 0XXX
         TRACE_INS(ANA);
-        taken = ANA(state, instruction);
+        ANA(state, instruction);
     } else if ((instruction & 0xF8) == 0xA8) {
     // 1010 1XXX
         TRACE_INS(XRA);
-        taken = XRA(state, instruction);
+        XRA(state, instruction);
     } else if ((instruction & 0xF8) == 0xB0) {
     // 1011 0XXX
         TRACE_INS(ORA);
-        taken = ORA(state, instruction);
+        ORA(state, instruction);
     } else if ((instruction & 0xF8) == 0xB8) {
     // 1011 1XXX
         TRACE_INS(CMP);
-        taken = CMP(state, instruction);
+        CMP(state, instruction);
     } else if ((instruction & 0xCF) == 0x01) {
     // 00XX 0001
         TRACE_INS(LXI);
-        taken = LXI(state, instruction);
+        LXI(state, instruction);
     } else if ((instruction & 0xCF) == 0x03) {
     // 00XX 0011
         TRACE_INS(INX);
-        taken = INX(state, instruction);
+        INX(state, instruction);
     } else if ((instruction & 0xCF) == 0x0B) {
     // 00XX 1011
         TRACE_INS(DCX);
-        taken = DCX(state, instruction);
+        DCX(state, instruction);
     } else if ((instruction & 0xCF) == 0x09) {
     // 00XX 1001
         TRACE_INS(DAD);
-        taken = DAD(state, instruction);
+        DAD(state, instruction);
     } else if ((instruction & 0xC7) == 0x04) {
     // 00XX X100
         TRACE_INS(INR);
-        taken = INR(state, instruction, 1);
+        INR(state, instruction, 1);
     } else if ((instruction & 0xC7) == 0x05) {
     // 00XX X101
         TRACE_INS(DCR);
-        taken = INR(state, instruction, 0);
+        INR(state, instruction, 0);
     } else if ((instruction & 0xC7) == 0xC4) {
     // 11XX X100
         TRACE_INS(CX);
@@ -1097,11 +949,11 @@ static int execute_one(struct state_t *state)
     } else if ((instruction & 0xC7) == 0xC2) {
     // 11XX X010
         TRACE_INS(JX);
-        taken = JX(state, instruction);
+        JX(state, instruction);
     } else if ((instruction & 0xC7) == 0x06) {
     // 00XX X110
         TRACE_INS(MVI);
-        taken = MVI(state, instruction);
+        MVI(state, instruction);
     } else if ((instruction & 0xC7) == 0xC0) {
     // 11XX X000
         TRACE_INS(RX);
@@ -1110,158 +962,158 @@ static int execute_one(struct state_t *state)
         switch(instruction) {
             case 0x00:
                 TRACE_INS(NOP);
-                taken = NOP(state);
+                NOP(state);
                 break;
             case 0x07:
                 TRACE_INS(RLC);
-                taken = RLC(state);
+                RLC(state);
                 break;
             case 0x0A:
                 TRACE_INS(LDAX);
                 TRACE("BC\t");
-                taken = LDAX(state, state->bc);
+                LDAX(state, state->bc);
                 break;
             case 0x0F:
                 TRACE_INS(RRC);
-                taken = RRC(state);
+                RRC(state);
                 break;
             case 0x1A:
                 TRACE_INS(LDAX);
                 TRACE("DE\t");
-                taken = LDAX(state, state->de);
+                LDAX(state, state->de);
                 break;
             case 0x1F:
                 TRACE_INS(RAR);
-                taken = RAR(state);
+                RAR(state);
                 break;
             case 0x22:
                 TRACE_INS(SHLD);
-                taken = SHLD(state);
+                SHLD(state);
                 break;
                 /*
             case 0x27:
                 TRACE_INS(DAA);
-                taken = DAA(state);
+                DAA(state);
                 break;
                 */
             case 0x2A:
                 TRACE_INS(LHLD);
-                taken = LHLD(state);
+                LHLD(state);
                 break;
             case 0x2F:
                 TRACE_INS(CMA);
-                taken = CMA(state);
+                CMA(state);
                 break;
             case 0x32:
                 TRACE_INS(STA);
-                taken = STA(state);
+                STA(state);
                 break;
             case 0x37:
                 TRACE_INS(STC);
-                taken = STC(state);
+                STC(state);
                 break;
             case 0x3A:
                 TRACE_INS(LDA);
-                taken = LDA(state);
+                LDA(state);
                 break;
             case 0xC1:
                 TRACE_INS(POP);
                 TRACE("BC\t");
-                taken = POP(state, &(state->bc));
+                POP(state, &(state->bc));
                 break;
             case 0xC3:
                 TRACE_INS(JMP);
-                taken = JMP(state);
+                JMP(state);
                 break;
             case 0xC5:
                 TRACE_INS(PUSH);
                 TRACE("B\tC\t");
-                taken = PUSH(state, state->bc);
+                PUSH(state, state->bc);
                 break;
             case 0xC6:
                 TRACE_INS(ADI);
-                taken = ADI(state);
+                ADI(state);
                 break;
             case 0xC9:
                 TRACE_INS(RET);
-                taken = RET(state);
+                RET(state);
                 break;
             case 0xCD:
                 TRACE_INS(CAL);
-                taken = CAL(state);
+                CAL(state);
                 break;
             case 0xD1:
                 TRACE_INS(POP);
                 TRACE("DE\t");
-                taken = POP(state, &(state->de));
+                POP(state, &(state->de));
                 break;
             case 0xD3:
                 TRACE_INS(OUT);
-                taken = OUT(state);
+                OUT(state);
                 break;
             case 0xD5:
                 TRACE_INS(PUSH);
                 TRACE("D\tE\t");
-                taken = PUSH(state, state->de);
+                PUSH(state, state->de);
                 break;
             case 0xD6:
                 TRACE_INS(SUI);
-                taken = SUI(state);
+                SUI(state);
                 break;
             case 0xDB:
                 TRACE_INS(IN);
-                taken = IN(state);
+                IN(state);
                 break;
             case 0xDE:
                 TRACE_INS(SBI);
-                taken = SBI(state);
+                SBI(state);
                 break;
             case 0xE1:
                 TRACE_INS(POP);
                 TRACE("H\tL\t");
-                taken = POP(state, &(state->hl));
+                POP(state, &(state->hl));
                 break;
             case 0xE3:
                 TRACE_INS(XTHL);
-                taken = XTHL(state);
+                XTHL(state);
                 break;
             case 0xE5:
                 TRACE_INS(PUSH);
                 TRACE("H\tL\t");
-                taken = PUSH(state, state->hl);
+                PUSH(state, state->hl);
                 break;
             case 0xE6:
                 TRACE_INS(ANI);
-                taken = ANI(state);
+                ANI(state);
                 break;
             case 0xE9:
                 TRACE_INS(PCHL);
-                taken = PCHL(state);
+                PCHL(state);
                 break;
             case 0xEB:
                 TRACE_INS(XCHG);
                 TRACE("HL\tDE\t");
-                taken = XCHG(state);
+                XCHG(state);
                 break;
             case 0xF1:
                 TRACE_INS(POPPSW);
-                taken = POPPSW(state);
+                POPPSW(state);
                 break;
             case 0xF5:
                 TRACE_INS(PUSHPSW);
-                taken = PUSHPSW(state);
+                PUSHPSW(state);
                 break;
             case 0xF6:
                 TRACE_INS(ORI);
-                taken = ORI(state);
+                ORI(state);
                 break;
             case 0xFB:
                 TRACE_INS(EI);
-                taken = EI(state);
+                EI(state);
                 break;
             case 0xFE:
                 TRACE_INS(CPI);
-                taken = CPI(state);
+                CPI(state);
                 break;
             case 0x08:
             case 0x10:
