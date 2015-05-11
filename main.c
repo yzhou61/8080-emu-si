@@ -126,47 +126,45 @@ static void display_loop()
     }
 }
 
-static void keyPressed(unsigned char key, int x, int y)
+static unsigned char *get_key(unsigned char encoding)
 {
-    switch (key) {
-        case 0x1B:
-            exit(0);
-        case 0x61:
-            keyboard.p1_left = 1;
-            break;
+    switch (encoding) {
+        case 'a':
+            return &(keyboard.p1_left);
+        case 'c':
+            return &(keyboard.coin);
         case 0x64:
-            keyboard.p1_right = 1;
-            break;
+            return &(keyboard.p1_right);
         case 0x73:
-            keyboard.p1_shoot = 1;
-            break;
+            return &(keyboard.p1_shoot);
         case 0x77:
-            keyboard.p1_start = 1;
-            break;
+            return &(keyboard.p1_start);
         default:
             break;
+    }
+
+    return NULL;
+}
+
+static void keyPressed(unsigned char key, int x, int y)
+{
+    unsigned char *p = get_key(key);
+
+    if (p != NULL) {
+        *p = 1;
     }
 }
 
 static void keyUp(unsigned char key, int x, int y)
 {
-    switch (key) {
-        case 0x1B:
-            exit(0);
-        case 0x61:
-            keyboard.p1_left = 0;
-            break;
-        case 0x64:
-            keyboard.p1_right = 0;
-            break;
-        case 0x73:
-            keyboard.p1_shoot = 0;
-            break;
-        case 0x77:
-            keyboard.p1_start = 0;
-            break;
-        default:
-            break;
+    unsigned char *p = get_key(key);
+
+    if (key == 0x1B) {
+        exit(0);
+    }
+
+    if (p != NULL) {
+        *p = 0;
     }
 }
 
