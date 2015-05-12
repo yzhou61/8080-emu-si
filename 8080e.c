@@ -10,14 +10,14 @@
 #define STACK_BOTTOM (0x2400)
 #define ROM_SIZE (0x2000)
 
-#define FS  (0x80)
-#define FZ  (0x40)
-#define F00 (0x20)
-#define FA  (0x10)
-#define F01 (0x08)
-#define FP  (0x04)
-#define F1  (0x02)
-#define FC  (0x01)
+#define FS  ((unsigned char)0x80)
+#define FZ  ((unsigned char)0x40)
+#define F00 ((unsigned char)0x20)
+#define FA  ((unsigned char)0x10)
+#define F01 ((unsigned char)0x08)
+#define FP  ((unsigned char)0x04)
+#define F1  ((unsigned char)0x02)
+#define FC  ((unsigned char)0x01)
 
 #define CARRY ((state->f & FC) != 0)
 
@@ -39,7 +39,7 @@
 #define TRACE_STATE() TRACE("\t\t\t\tpc\tsp\ta\tb\tc\td\te\tSZ0A0P1C\th\tl\tINTR\tSHIFT\tSHIFT OFF\n"); \
                       TRACE("\t\t\t\t0x%04x\t0x%04x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t0x%02x\t"BYTETOBINARYPATTERN"\t0x%02x\t0x%02x\t%d\t0x%04x\t0x%02x\n", \
                               state->pc, state->sp, state->a, *(state->b), *(state->c), *(state->d), *(state->e), BYTETOBINARY(state->f), *(state->h), *(state->l), state->intr, state->shift_reg, state->shift_reg_offset); \
-                      //print_stack(state)
+                      print_stack(state)
 
 struct state_t {
     unsigned short pc;
@@ -88,14 +88,24 @@ static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, 
 static void print_stack(struct state_t *state)
 {
     int i;
+    static unsigned char m;
 
+    unsigned char n = MEM_LOC(0x2015);
+
+    if (n != m) {
     TRACE("\t\t\t\t");
 
+    TRACE("CHANGED: 0x%02x", MEM_LOC(0x2015));
+    m = n;
+
+    /*
     for (i = STACK_BOTTOM; i >= state->sp; --i) {
         TRACE("0x%02x ", MEM_LOC(i));
     }
+    */
 
     TRACE("\n");
+    }
 }
 
 static long init_program(const char *name, unsigned char *buffer)
@@ -255,6 +265,16 @@ static void set_ZSP(struct state_t *state, unsigned char res)
     }
 }
 
+static void set_A(struct state_t *state, unsigned char before, unsigned char after)
+{
+    // TODO
+    if ((before & 0x10) != (after & 0x10)) {
+        state->f |= FA;
+    } else {
+        state->f &= ~FA;
+    }
+}
+
 static unsigned char *get_reg(struct state_t *state, unsigned char encoding)
 {
     switch (encoding) {
@@ -345,30 +365,6 @@ static unsigned char get_cond(struct state_t *state, unsigned char encoding)
     return 0;
 }
 
-static void set_A(struct state_t *state, unsigned char before, unsigned char after)
-{
-    // TODO
-    /*
-    if ((before & 0x10) != (after & 0x10)) {
-        state->f |= FA;
-    } else {
-        state->f &= ~FA;
-    }
-    */
-}
-
-// ================= SPECIAL ====================
-static void NOP(struct state_t *state)
-{
-}
-
-// ================= BRANCH ====================
-
-static void PCHL(struct state_t *state)
-{
-    state->pc = state->hl;
-}
-
 static void jump_if(struct state_t *state, unsigned char c)
 {
     unsigned short pc = read_16b(state);
@@ -376,18 +372,6 @@ static void jump_if(struct state_t *state, unsigned char c)
     if (c) {
         state->pc = pc;
     }
-}
-
-static void JX(struct state_t *state, unsigned char instr)
-{
-    unsigned char cond = (instr & 0x38);
-    unsigned char taken = get_cond(state, cond >> 3);
-    jump_if(state, taken);
-}
-
-static void JMP(struct state_t *state)
-{
-    jump_if(state, 1);
 }
 
 static void call_if(struct state_t *state, unsigned char c)
@@ -402,6 +386,127 @@ static void call_if(struct state_t *state, unsigned char c)
     }
 }
 
+static void return_if(struct state_t *state, unsigned char c)
+{
+    if (c) {
+        unsigned int pc = 0;
+
+        pc = MEM_LOC(state->sp); ++state->sp;
+        pc |= (MEM_LOC(state->sp) << 8); ++state->sp;
+
+        state->pc = pc;
+    }
+}
+
+static unsigned char add(struct state_t *state, unsigned int a, unsigned int b)
+{
+    unsigned char res = a + b;
+
+    if (a + b > 0xFF) {
+        state->f |= FC;
+    } else {
+        state->f &= ~FC;
+    }
+
+    set_A(state, a, res);
+    set_ZSP(state, res);
+
+    return res;
+}
+
+static unsigned char sub(struct state_t *state, unsigned int a, unsigned int b)
+{
+    unsigned char res = a - b;
+
+    if (a < b) {
+        state->f |= FC;
+    } else {
+        state->f &= ~FC;
+    }
+
+    set_A(state, a, res);
+    set_ZSP(state, res);
+
+    return res;
+}
+
+static unsigned char inc_dec(struct state_t *state, unsigned char i, int p)
+{
+    unsigned char res;
+
+    res = i + p;
+
+    set_A(state, i, res);
+    set_ZSP(state, res);
+
+    return res;
+}
+
+static unsigned char and(struct state_t *state, unsigned char a, unsigned char b, int clear_a)
+{
+    unsigned char res = a & b;
+
+    if (clear_a) {
+        state->f &= ~FA;
+    } else {
+        set_A(state, a, res);
+    }
+
+    set_ZSP(state, res);
+
+    state->f &= ~FC;
+
+    return res;
+}
+
+static unsigned char or(struct state_t *state, unsigned char a, unsigned char b)
+{
+    unsigned char res = a | b;
+
+    set_ZSP(state, res);
+
+    state->f &= ~FC;
+    state->f &= ~FA;
+
+    return res;
+}
+
+static unsigned char xor(struct state_t *state, unsigned char a, unsigned char b)
+{
+    unsigned char res = a ^ b;
+
+    set_ZSP(state, res);
+
+    state->f &= ~FC;
+    state->f &= ~FA;
+
+    return res;
+}
+
+// ================= SPECIAL ====================
+static void NOP(struct state_t *state)
+{
+}
+
+// ================= BRANCH ====================
+
+static void PCHL(struct state_t *state)
+{
+    state->pc = state->hl;
+}
+
+static void JX(struct state_t *state, unsigned char instr)
+{
+    unsigned char cond = (instr & 0x38);
+    unsigned char taken = get_cond(state, cond >> 3);
+    jump_if(state, taken);
+}
+
+static void JMP(struct state_t *state)
+{
+    jump_if(state, 1);
+}
+
 static int CX(struct state_t *state, unsigned char instr)
 {
     unsigned char cond = (instr & 0x38);
@@ -413,18 +518,6 @@ static int CX(struct state_t *state, unsigned char instr)
 static void CAL(struct state_t *state)
 {
     call_if(state, 1);
-}
-
-static void return_if(struct state_t *state, unsigned char c)
-{
-    if (c) {
-        unsigned int pc = 0;
-
-        pc = MEM_LOC(state->sp); ++state->sp;
-        pc |= (MEM_LOC(state->sp) << 8); ++state->sp;
-
-        state->pc = pc;
-    }
 }
 
 static int RX(struct state_t *state, unsigned char instr)
@@ -489,38 +582,6 @@ static void MOV(struct state_t *state, unsigned char instr)
     *get_reg(state, dst) = *get_reg(state, src);
 }
 
-static unsigned char add(struct state_t *state, unsigned int a, unsigned int b)
-{
-    unsigned char res = a + b;
-
-    if (a + b > 0xFF) {
-        state->f |= FC;
-    } else {
-        state->f &= ~FC;
-    }
-
-    set_A(state, a, res);
-    set_ZSP(state, res);
-
-    return res;
-}
-
-static unsigned char sub(struct state_t *state, unsigned int a, unsigned int b)
-{
-    unsigned char res = a - b;
-
-    if (a < b) {
-        state->f |= FC;
-    } else {
-        state->f &= ~FC;
-    }
-
-    set_A(state, a, res);
-    set_ZSP(state, res);
-
-    return res;
-}
-
 static void ADD(struct state_t *state, unsigned char instr, int carry)
 {
     unsigned char src;
@@ -563,18 +624,6 @@ static void DCX(struct state_t *state, unsigned char instr)
 {
     unsigned char dreg = (instr & 0x30) >> 4;
     --(*get_dreg(state, dreg));
-}
-
-static unsigned char inc_dec(struct state_t *state, unsigned char i, int p)
-{
-    unsigned char res;
-
-    res = i + p;
-
-    set_A(state, i, res);
-    set_ZSP(state, res);
-
-    return res;
 }
 
 static void INR(struct state_t *state, unsigned char instr, int inc)
@@ -720,47 +769,6 @@ static void RAR(struct state_t *state)
     state->f |= (FC * c);
 }
 
-static unsigned char and(struct state_t *state, unsigned char a, unsigned char b, int clear_a)
-{
-    unsigned char res = a & b;
-
-    if (clear_a) {
-        state->f &= ~FA;
-    } else {
-        set_A(state, a, res);
-    }
-
-    set_ZSP(state, res);
-
-    state->f &= ~FC;
-
-    return res;
-}
-
-static unsigned char or(struct state_t *state, unsigned char a, unsigned char b)
-{
-    unsigned char res = a | b;
-
-    set_ZSP(state, res);
-
-    state->f &= ~FC;
-    state->f &= ~FA;
-
-    return res;
-}
-
-static unsigned char xor(struct state_t *state, unsigned char a, unsigned char b)
-{
-    unsigned char res = a ^ b;
-
-    set_ZSP(state, res);
-
-    state->f &= ~FC;
-    state->f &= ~FA;
-
-    return res;
-}
-
 static void ANI(struct state_t *state)
 {
     unsigned char b = read_8b(state);
@@ -851,7 +859,6 @@ static void STC(struct state_t *state)
     state->f |= FC;
 }
 
-/*
 static void DAA(struct state_t *state)
 {
     if ((state->a & 0x0F) > 9 || (state->f & FA)) {
@@ -862,7 +869,6 @@ static void DAA(struct state_t *state)
         state->a = add(state, state->a, 0x60);
     }
 }
-*/
 
 static int execute_one(struct state_t *state)
 {
@@ -990,12 +996,10 @@ static int execute_one(struct state_t *state)
                 TRACE_INS(SHLD);
                 SHLD(state);
                 break;
-                /*
             case 0x27:
                 TRACE_INS(DAA);
                 DAA(state);
                 break;
-                */
             case 0x2A:
                 TRACE_INS(LHLD);
                 LHLD(state);
@@ -1129,7 +1133,7 @@ static int execute_one(struct state_t *state)
             case 0xFD:
                 ABORT(("Alternative opcode used (0x%02x). Aborting...\n", instruction));
             default:
-                ABORT(("Unrecognized instruction 0x%02x at 0x%04x\n", state->program[state->pc], state->pc));
+                ABORT(("Unrecognized instruction 0x%02x at 0x%04x\n", instruction, state->pc));
         }
     }
 
