@@ -63,6 +63,7 @@
 0069  32 EA 20  sta     $20EA
 006C  C3 3F 00  jmp     $003F
 
+// Start drawing one unit
 006F  CD 40 17  call    $1740
 0072  3A 32 20  lda     $2032
 0075  32 80 20  sta     $2080
@@ -157,6 +158,8 @@
 00FD  00        nop
 00FE  00        nop
 00FF  00        nop
+
+// Draw enemy all types
 0100  21 02 20  lxi     h,$2002
 0103  7E        mov     a,m
 0104  A7        ana     a
@@ -276,6 +279,7 @@
 01BE  C9        ret
 
 01BF  00        nop
+// Reset 2100 - 2137 (to 0x01)
 01C0  21 00 21  lxi     h,$2100
 01C3  06 37     mvi     b,$37
 01C5  36 01     mvi     m,$01
@@ -304,14 +308,17 @@
 01E2  77        mov     m,a
 01E3  C9        ret
 
+// Reset 2000 - 20C0
 01E4  06 C0     mvi     b,$C0
 01E6  11 00 1B  lxi     d,$1B00
 01E9  21 00 20  lxi     h,$2000
 01EC  C3 32 1A  jmp     $1A32
 
+// Set 2142 to 1D20, size 2C * 4
 01EF  21 42 21  lxi     h,$2142
 01F2  C3 F8 01  jmp     $01F8
 
+// Set 2242 to 1D20, size 2C * 4
 01F5  21 42 22  lxi     h,$2242
 01F8  0E 04     mvi     c,$04
 01FA  11 20 1D  lxi     d,$1D20
@@ -333,6 +340,7 @@
 0214  11 42 22  lxi     d,$2242
 0217  C3 1E 02  jmp     $021E
 
+// Draw 4 "bunckers"
 021A  AF        xra     a
 021B  11 42 21  lxi     d,$2142
 021E  32 81 20  sta     $2081
@@ -385,6 +393,7 @@
 026C  E3        xthl
 026D  D5        push    d
 026E  E9        pchl
+
 026F  E1        pop     h
 0270  11 0C 00  lxi     d,$000C
 0273  19        dad
@@ -467,7 +476,7 @@
 02FF  2B        dcx     h
 0300  70        mov     m,b
 0301  00        nop
-0302  CD E4 01  call    $01E4
+0302  CD E4 01  call    $01E4           // Reset 2000 - 20C0
 0305  F1        pop     psw
 0306  0F        rrc
 0307  3E 21     mvi     a,$21
@@ -483,11 +492,11 @@
 031D  D3 05     out     $05
 031F  3C        inr     a
 0320  32 98 20  sta     $2098
-0323  CD D6 09  call    $09D6
-0326  CD 7F 1A  call    $1A7F
+0323  CD D6 09  call    $09D6           // Clear mid screen
+0326  CD 7F 1A  call    $1A7F           // Draw "lives"
 0329  C3 F9 07  jmp     $07F9
 
-032C  CD 7F 1A  call    $1A7F
+032C  CD 7F 1A  call    $1A7F           // Draw "lives"
 032F  C3 17 08  jmp     $0817
 
 0332  CD 09 02  call    $0209
@@ -775,7 +784,7 @@
 056C  3A C1 20  lda     $20C1
 056F  FE 04     cpi     $04
 0571  3A 69 20  lda     $2069
-0574  CA B7 05  jz      $05B7
+0574  CA B7 05  jz      $05B7           // When player bullet hits
 0577  A7        ana     a
 0578  C8        rz
 0579  23        inx     h
@@ -1035,6 +1044,7 @@
 0756  21 7C 1D  lxi     h,$1D7C
 0759  22 87 20  shld    $2087
 075C  C3 3C 07  jmp     $073C
+
 075F  11 83 1B  lxi     d,$1B83
 0762  C3 32 1A  jmp     $1A32
 
@@ -1043,18 +1053,18 @@
 076A  31 00 24  lxi     sp,$2400
 076D  FB        ei
 076E  CD 79 19  call    $1979
-0771  CD D6 09  call    $09D6
+0771  CD D6 09  call    $09D6           // Clear mid screen
 0774  21 13 30  lxi     h,$3013
 0777  11 F3 1F  lxi     d,$1FF3
 077A  0E 04     mvi     c,$04
-077C  CD F3 08  call    $08F3
+077C  CD F3 08  call    $08F3               // Draw string (length = c - 1)
 077F  3A EB 20  lda     $20EB
 0782  3D        dcr     a
 0783  21 10 28  lxi     h,$2810
 0786  0E 14     mvi     c,$14
 0788  C2 57 08  jnz     $0857
 078B  11 CF 1A  lxi     d,$1ACF
-078E  CD F3 08  call    $08F3
+078E  CD F3 08  call    $08F3               // Draw string (length = c - 1)
 0791  DB 01     in      $01
 0793  E6 04     ani     $04                 // P1 start
 0795  CA 7F 07  jz      $077F
@@ -1077,25 +1087,25 @@
 07BF  32 EF 20  sta     $20EF
 07C2  22 E7 20  shld    $20E7
 07C5  22 E5 20  shld    $20E5
-07C8  CD 56 19  call    $1956 // Zero out screen
-07CB  CD EF 01  call    $01EF
-07CE  CD F5 01  call    $01F5
-07D1  CD D1 08  call    $08D1
-07D4  32 FF 21  sta     $21FF
+07C8  CD 56 19  call    $1956               // Zero out screen
+07CB  CD EF 01  call    $01EF               // Set 2142 +2C*4
+07CE  CD F5 01  call    $01F5               // Set 2242 to 1D20, size 2C * 4
+07D1  CD D1 08  call    $08D1               // Check lives
+07D4  32 FF 21  sta     $21FF               // Store lives
 07D7  32 FF 22  sta     $22FF
 07DA  CD D7 00  call    $00D7
 07DD  AF        xra     a
 07DE  32 FE 21  sta     $21FE
 07E1  32 FE 22  sta     $22FE
-07E4  CD C0 01  call    $01C0
+07E4  CD C0 01  call    $01C0               // Reset 2100 - 2137 to 0x01
 07E7  CD 04 19  call    $1904
 07EA  21 78 38  lxi     h,$3878
 07ED  22 FC 21  shld    $21FC
 07F0  22 FC 22  shld    $22FC
-07F3  CD E4 01  call    $01E4
-07F6  CD 7F 1A  call    $1A7F
+07F3  CD E4 01  call    $01E4           // Reset 2000 - 20C0
+07F6  CD 7F 1A  call    $1A7F           // Draw "lives"
 07F9  CD 8D 08  call    $088D
-07FC  CD D6 09  call    $09D6
+07FC  CD D6 09  call    $09D6           // Clear mid screen
 07FF  00        nop
 0800  AF        xra     a
 0801  32 C1 20  sta     $20C1
@@ -1134,7 +1144,7 @@
 0856  00        nop
 
 0857  11 BA 1A  lxi     d,$1ABA
-085A  CD F3 08  call    $08F3
+085A  CD F3 08  call    $08F3               // Draw string (length = c - 1)
 085D  06 98     mvi     b,$98
 085F  DB 01     in      $01
 0861  0F        rrc
@@ -1155,6 +1165,7 @@
 087C  2A 09 20  lhld    $2009
 087F  EB        xchg
 0880  C3 86 08  jmp     $0886
+
 0883  00        nop
 0884  00        nop
 0885  00        nop
@@ -1166,7 +1177,7 @@
 088D  21 11 2B  lxi     h,$2B11
 0890  11 70 1B  lxi     d,$1B70
 0893  0E 0E     mvi     c,$0E
-0895  CD F3 08  call    $08F3
+0895  CD F3 08  call    $08F3               // Draw string (length = c - 1)
 0898  3A 67 20  lda     $2067
 089B  0F        rrc
 089C  3E 1C     mvi     a,$1C
@@ -1182,6 +1193,7 @@
 08B3  CD CA 09  call    $09CA
 08B6  CD 31 19  call    $1931
 08B9  C3 A9 08  jmp     $08A9
+
 08BC  06 20     mvi     b,$20
 08BE  21 1C 27  lxi     h,$271C
 08C1  3A 67 20  lda     $2067
@@ -1190,6 +1202,8 @@
 08C8  21 1C 39  lxi     h,$391C
 08CB  CD CB 14  call    $14CB
 08CE  C3 A9 08  jmp     $08A9
+
+// Cheat code
 08D1  DB 02     in      $02
 08D3  E6 03     ani     $03
 08D5  C6 03     adi     $03
@@ -1208,7 +1222,9 @@
 08E9  21 1C 39  lxi     h,$391C
 08EC  06 20     mvi     b,$20
 08EE  C3 CB 14  jmp     $14CB
+
 08F1  0E 03     mvi     c,$03
+// Draw string (length = c - 1)
 08F3  1A        ldax    d
 08F4  D5        push    d
 08F5  CD FF 08  call    $08FF
@@ -1231,6 +1247,7 @@
 090C  06 08     mvi     b,$08
 090E  D3 06     out     $06
 0910  C3 39 14  jmp     $1439
+
 0913  3A 09 20  lda     $2009
 0916  FE 78     cpi     'x'
 0918  D0        rnc
@@ -1245,7 +1262,7 @@
 092A  22 91 20  shld    $2091
 092D  C9        ret
 
-092E  CD 11 16  call    $1611
+092E  CD 11 16  call    $1611           // Set hl -> (2067) 00
 0931  2E FF     mvi     l,$FF
 0933  7E        mov     a,m
 0934  C9        ret
@@ -1289,6 +1306,7 @@
 0974  32 99 20  sta     $2099
 0977  06 10     mvi     b,$10
 0979  C3 FA 18  jmp     $18FA
+
 097C  21 A0 1D  lxi     h,$1DA0
 097F  FE 02     cpi     $02
 0981  D8        rc
@@ -1325,6 +1343,7 @@
 09A8  66        mov     h,m
 09A9  6F        mov     l,a
 09AA  C3 AD 09  jmp     $09AD
+
 09AD  7A        mov     a,d
 09AE  CD B2 09  call    $09B2
 09B1  7B        mov     a,e
@@ -1344,6 +1363,7 @@
 
 09C5  C6 1A     adi     $1A
 09C7  C3 FF 08  jmp     $08FF
+
 09CA  3A 67 20  lda     $2067
 09CD  0F        rrc
 09CE  21 F8 20  lxi     h,$20F8
@@ -1372,7 +1392,7 @@
 09F6  CD D6 09  call    $09D6               // Clear mid screen
 09F9  3A 67 20  lda     $2067
 09FC  F5        push    psw
-09FD  CD E4 01  call    $01E4
+09FD  CD E4 01  call    $01E4           // Reset 2000 - 20C0
 0A00  F1        pop     psw
 0A01  32 67 20  sta     $2067
 0A04  3A 67 20  lda     $2067
@@ -1398,12 +1418,12 @@
 0A22  DA 33 0A  jc      $0A33
 0A25  3E 21     mvi     a,$21
 0A27  32 98 20  sta     $2098
-0A2A  CD F5 01  call    $01F5
+0A2A  CD F5 01  call    $01F5               // Set 2242 to 1D20, size 2C * 4
 0A2D  CD 04 19  call    $1904
 0A30  C3 04 08  jmp     $0804
 
-0A33  CD EF 01  call    $01EF
-0A36  CD C0 01  call    $01C0
+0A33  CD EF 01  call    $01EF               // Set 2142 +2C*4
+0A36  CD C0 01  call    $01C0               // Reset 2100 - 2137 to 0x01
 0A39  C3 04 08  jmp     $0804
 
 0A3C  CD 59 0A  call    $0A59
@@ -1478,6 +1498,7 @@
 0ABB  E1        pop     h
 0ABC  C3 72 00  jmp     $0072
 
+// Check 20C1 state
 0ABF  3A C1 20  lda     $20C1
 0AC2  0F        rrc
 0AC3  DA BB 0A  jc      $0ABB
@@ -1521,7 +1542,7 @@
 0B0E  CD B1 0A  call    $0AB1           // Delay for $40 (after "play space invader")
 0B11  CD 15 18  call    $1815           // score board
 0B14  CD B6 0A  call    $0AB6           // Delay for $80 (after "score board")
-0B17  3A EC 20  lda     $20EC
+0B17  3A EC 20  lda     $20EC           // Check odd/even round (init 0x01)
 0B1A  A7        ana     a
 0B1B  C2 4A 0B  jnz     $0B4A
 0B1E  11 95 1A  lxi     d,$1A95
@@ -1540,18 +1561,18 @@
 0B44  CD CB 14  call    $14CB
 0B47  CD B6 0A  call    $0AB6           // Delay for $80
 0B4A  CD D6 09  call    $09D6           // Clear mid screen
-0B4D  3A FF 21  lda     $21FF
+0B4D  3A FF 21  lda     $21FF           // Load live?
 0B50  A7        ana     a
 0B51  C2 5D 0B  jnz     $0B5D
-0B54  CD D1 08  call    $08D1
+0B54  CD D1 08  call    $08D1           // If life == 1 check cheat code
 0B57  32 FF 21  sta     $21FF
-0B5A  CD 7F 1A  call    $1A7F
-0B5D  CD E4 01  call    $01E4
-0B60  CD C0 01  call    $01C0
-0B63  CD EF 01  call    $01EF
-0B66  CD 1A 02  call    $021A
+0B5A  CD 7F 1A  call    $1A7F           // Draw "lives"
+0B5D  CD E4 01  call    $01E4           // Reset 2000 - 20C0
+0B60  CD C0 01  call    $01C0               // Reset 2100 - 2137 to 0x01
+0B63  CD EF 01  call    $01EF               // Set 2142 +2C*4 to 1D20
+0B66  CD 1A 02  call    $021A               // Draw "bunckers"
 0B69  3E 01     mvi     a,$01
-0B6B  32 C1 20  sta     $20C1
+0B6B  32 C1 20  sta     $20C1           // Set 20C1
 0B6E  CD CF 01  call    $01CF
 0B71  CD 18 16  call    $1618
 0B74  CD F1 0B  call    $0BF1
@@ -1569,7 +1590,7 @@
 0B93  0E 0C     mvi     c,$0C
 0B95  21 11 2C  lxi     h,$2C11
 0B98  11 90 1F  lxi     d,$1F90
-0B9B  CD F3 08  call    $08F3
+0B9B  CD F3 08  call    $08F3               // Draw string (length = c - 1)
 0B9E  3A EC 20  lda     $20EC
 0BA1  FE 00     cpi     $00
 0BA3  C2 AE 0B  jnz     $0BAE
@@ -3756,6 +3777,7 @@
 1475  E6 07     ani     $07
 1477  D3 02     out     $02
 1479  C3 47 1A  jmp     $1A47
+
 147C  C5        push    b
 147D  E5        push    h
 147E  7E        mov     a,m
@@ -3808,6 +3830,7 @@
 14C6  05        dcr     b
 14C7  C2 98 14  jnz     $1498
 14CA  C9        ret
+
 14CB  AF        xra     a
 14CC  C5        push    b
 14CD  77        mov     m,a
@@ -3859,9 +3882,11 @@
 152A  3E 10     mvi     a,$10
 152C  32 03 20  sta     $2003
 152F  C9        ret
+
 1530  3E 03     mvi     a,$03
 1532  32 25 20  sta     $2025
 1535  C3 4A 15  jmp     $154A
+
 1538  21 03 20  lxi     h,$2003
 153B  35        dcr     m
 153C  C0        rnz
@@ -3874,6 +3899,7 @@
 154B  32 02 20  sta     $2002
 154E  06 F7     mvi     b,$F7
 1550  C3 DC 19  jmp     $19DC
+
 1553  00        nop
 1554  0E 00     mvi     c,$00
 1556  BC        cmp     h
@@ -3883,6 +3909,7 @@
 155C  C6 10     adi     $10
 155E  0C        inr     c
 155F  C3 5A 15  jmp     $155A
+
 1562  3A 09 20  lda     $2009
 1565  65        mov     h,l
 1566  CD 54 15  call    $1554
@@ -3891,14 +3918,17 @@
 156B  DE 10     sbi     $10
 156D  6F        mov     l,a
 156E  C9        ret
+
 156F  3A 0A 20  lda     $200A
 1572  CD 54 15  call    $1554
 1575  DE 10     sbi     $10
 1577  67        mov     h,a
 1578  C9        ret
+
 1579  3E 01     mvi     a,$01
 157B  32 85 20  sta     $2085
 157E  C3 45 15  jmp     $1545
+
 1581  78        mov     a,b
 1582  07        rlc
 1583  07        rlc
@@ -3912,10 +3942,12 @@
 158B  3A 67 20  lda     $2067
 158E  67        mov     h,a
 158F  C9        ret
+
 1590  0C        inr     c
 1591  C6 10     adi     $10
 1593  FA 90 15  jm      $1590
 1596  C9        ret
+
 1597  3A 0D 20  lda     $200D
 159A  A7        ana     a
 159B  C2 B7 15  jnz     $15B7
@@ -3930,12 +3962,14 @@
 15B0  3A 0E 20  lda     $200E
 15B3  32 07 20  sta     $2007
 15B6  C9        ret
+
 15B7  21 24 25  lxi     h,$2524
 15BA  CD C5 15  call    $15C5
 15BD  D0        rnc
 15BE  CD F1 18  call    $18F1
 15C1  AF        xra     a
 15C2  C3 A9 15  jmp     $15A9
+
 15C5  06 17     mvi     b,$17
 15C7  7E        mov     a,m
 15C8  A7        ana     a
@@ -3944,6 +3978,8 @@
 15CD  05        dcr     b
 15CE  C2 C7 15  jnz     $15C7
 15D1  C9        ret
+
+// Draw one enemy (all types)
 15D2  00        nop
 15D3  CD 74 14  call    $1474
 15D6  E5        push    h
@@ -3967,7 +4003,8 @@
 15EE  C2 D7 15  jnz     $15D7
 15F1  E1        pop     h
 15F2  C9        ret
-15F3  CD 11 16  call    $1611
+
+15F3  CD 11 16  call    $1611           // Set hl -> (2067) 00
 15F6  01 00 37  lxi     b,$3700
 15F9  7E        mov     a,m
 15FA  A7        ana     a
@@ -3983,6 +4020,8 @@
 160B  21 6B 20  lxi     h,$206B
 160E  36 01     mvi     m,$01
 1610  C9        ret
+
+// Set hl -> (2067) 00
 1611  2E 00     mvi     l,$00
 1613  3A 67 20  lda     $2067
 1616  67        mov     h,a
@@ -4032,8 +4071,10 @@
 1666  7E        mov     a,m
 1667  32 1D 20  sta     $201D
 166A  C9        ret
+
 166B  37        stc
 166C  C9        ret
+
 166D  AF        xra     a
 166E  CD 8B 1A  call    $1A8B
 1671  CD 10 19  call    $1910
@@ -4049,6 +4090,7 @@
 1682  CA 8B 16  jz      $168B
 1685  D2 98 16  jnc     $1698
 1688  C3 8F 16  jmp     $168F
+
 168B  BE        cmp     m
 168C  D2 98 16  jnc     $1698
 168F  7E        mov     a,m
@@ -4080,17 +4122,19 @@
 16C2  A7        ana     a
 16C3  CA C9 16  jz      $16C9
 16C6  C3 ED 02  jmp     $02ED
+
 16C9  21 18 2D  lxi     h,$2D18
 16CC  11 A6 1A  lxi     d,$1AA6
 16CF  0E 0A     mvi     c,$0A
 16D1  CD 93 0A  call    $0A93
 16D4  CD B6 0A  call    $0AB6           // Delay for $80
-16D7  CD D6 09  call    $09D6
+16D7  CD D6 09  call    $09D6           // Clear mid screen
 16DA  AF        xra     a
 16DB  32 EF 20  sta     $20EF
 16DE  D3 05     out     $05
 16E0  CD D1 19  call    $19D1
 16E3  C3 89 0B  jmp     $0B89
+
 16E6  31 00 24  lxi     sp,$2400
 16E9  FB        ei
 16EA  AF        xra     a
@@ -4107,6 +4151,7 @@
 1706  CD 8B 1A  call    $1A8B
 1709  06 FB     mvi     b,$FB
 170B  C3 6B 19  jmp     $196B
+
 170E  CD CA 09  call    $09CA
 1711  23        inx     h
 1712  7E        mov     a,m
@@ -4160,10 +4205,12 @@
 1767  3E 04     mvi     a,$04
 1769  32 9B 20  sta     $209B
 176C  C9        ret
+
 176D  3A 98 20  lda     $2098
 1770  E6 30     ani     $30
 1772  D3 05     out     $05
 1774  C9        ret
+
 1775  3A 95 20  lda     $2095
 1778  A7        ana     a
 1779  CA AA 17  jz      $17AA
@@ -4175,6 +4222,7 @@
 1789  23        inx     h
 178A  13        inx     d
 178B  C3 85 17  jmp     $1785
+
 178E  1A        ldax    d
 178F  32 97 20  sta     $2097
 1792  21 98 20  lxi     h,$2098
@@ -4223,7 +4271,7 @@
 17D6  C0        rnz
 17D7  31 00 24  lxi     sp,$2400
 17DA  06 04     mvi     b,$04
-17DC  CD D6 09  call    $09D6
+17DC  CD D6 09  call    $09D6           // Clear mid screen
 17DF  05        dcr     b
 17E0  C2 DC 17  jnz     $17DC
 17E3  3E 01     mvi     a,$01
@@ -4239,6 +4287,7 @@
 17FB  32 9A 20  sta     $209A
 17FE  32 93 20  sta     $2093
 1801  C3 C9 16  jmp     $16C9
+
 1804  21 84 20  lxi     h,$2084
 1807  7E        mov     a,m
 1808  A7        ana     a
@@ -4253,7 +4302,7 @@
 1815  21 10 28  lxi     h,$2810
 1818  11 A3 1C  lxi     d,$1CA3
 181B  0E 15     mvi     c,$15
-181D  CD F3 08  call    $08F3
+181D  CD F3 08  call    $08F3               // Draw string (length = c - 1)
 1820  3E 0A     mvi     a,$0A
 1822  32 6C 20  sta     $206C
 1825  01 BE 1D  lxi     b,$1DBE
@@ -4274,6 +4323,7 @@
 1847  CD 39 14  call    $1439
 184A  C1        pop     b
 184B  C9        ret
+
 184C  C5        push    b
 184D  3A 6C 20  lda     $206C
 1850  4F        mov     c,a
@@ -4319,12 +4369,14 @@
 188E  CD 3B 1A  call    $1A3B
 1891  EB        xchg
 1892  C3 D3 15  jmp     $15D3
+
 1895  00        nop
 1896  00        nop
 1897  00        nop
 1898  3E 01     mvi     a,$01
 189A  32 CB 20  sta     $20CB
 189D  C9        ret
+
 189E  21 50 20  lxi     h,$2050
 18A1  11 C0 1B  lxi     d,$1BC0
 18A4  06 10     mvi     b,$10
@@ -4361,6 +4413,7 @@
 18EE  D0        rnc
 18EF  23        inx     h
 18F0  C9        ret
+
 18F1  06 02     mvi     b,$02
 18F3  3A 82 20  lda     $2082
 18F6  3D        dcr     a
@@ -4387,14 +4440,18 @@
 1917  D8        rc
 1918  23        inx     h
 1919  C9        ret
+
 191A  0E 1C     mvi     c,$1C
 191C  21 1E 24  lxi     h,$241E
 191F  11 E4 1A  lxi     d,$1AE4
-1922  C3 F3 08  jmp     $08F3
+1922  C3 F3 08  jmp     $08F3               // Draw string (length = c - 1)
+
 1925  21 F8 20  lxi     h,$20F8
 1928  C3 31 19  jmp     $1931
+
 192B  21 FC 20  lxi     h,$20FC
 192E  C3 31 19  jmp     $1931
+
 1931  5E        mov     e,m
 1932  23        inx     h
 1933  56        mov     d,m
@@ -4404,10 +4461,12 @@
 1937  66        mov     h,m
 1938  6F        mov     l,a
 1939  C3 AD 09  jmp     $09AD
+
+// Draw "Credit "
 193C  0E 07     mvi     c,$07
 193E  21 01 35  lxi     h,$3501
 1941  11 A9 1F  lxi     d,$1FA9
-1944  C3 F3 08  jmp     $08F3
+1944  C3 F3 08  jmp     $08F3               // Draw string (length = c - 1)
 
 // Draw coin
 1947  3A EB 20  lda     $20EB
@@ -4417,12 +4476,12 @@
 1950  21 F4 20  lxi     h,$20F4
 1953  C3 31 19  jmp     $1931
 
-1956  CD 5C 1A  call    $1A5C  // Zero out screen
+1956  CD 5C 1A  call    $1A5C           // Zero out screen
 1959  CD 1A 19  call    $191A
 195C  CD 25 19  call    $1925
 195F  CD 2B 19  call    $192B
 1962  CD 50 19  call    $1950
-1965  CD 3C 19  call    $193C
+1965  CD 3C 19  call    $193C           // Draw "credit"
 1968  C3 47 19  jmp     $1947
 
 196B  CD DC 19  call    $19DC
@@ -4431,21 +4490,26 @@
 1971  3E 01     mvi     a,$01
 1973  32 6D 20  sta     $206D
 1976  C3 E6 16  jmp     $16E6
+
+// TODO after coin press
 1979  CD D7 19  call    $19D7
 197C  CD 47 19  call    $1947
-197F  C3 3C 19  jmp     $193C
+197F  C3 3C 19  jmp     $193C           // Draw "credit"
 
 1982  32 C1 20  sta     $20C1
 1985  C9        ret
 
 1986  8B        adc     e
 1987  19        dad
-1988  C3 D6 09  jmp     $09D6
+
+1988  C3 D6 09  jmp     $09D6           // Clear mid screen
 
 198B  21 03 28  lxi     h,$2803
 198E  11 BE 19  lxi     d,$19BE
 1991  0E 13     mvi     c,$13
-1993  C3 F3 08  jmp     $08F3
+1993  C3 F3 08  jmp     $08F3               // Draw string (length = c - 1)
+
+// TODO Unknown
 1996  00        nop
 1997  00        nop
 1998  00        nop
@@ -4466,29 +4530,34 @@
 19B3  21 1B 2E  lxi     h,$2E1B
 19B6  11 F7 0B  lxi     d,$0BF7
 19B9  0E 09     mvi     c,$09
-19BB  C3 F3 08  jmp     $08F3
+19BB  C3 F3 08  jmp     $08F3               // Draw string (length = c - 1)
 
-19BE  28        nop                  ;Note: Alternative opcode used
-19BF  13        inx     d
-19C0  00        nop
-19C1  08        nop                  ;Note: Alternative opcode used
-19C2  13        inx     d
-19C3  0E 26     mvi     c,$26
-19C5  02        stax    b
-19C6  0E 11     mvi     c,$11
-19C8  0F        rrc
-19C9  0E 11     mvi     c,$11
-19CB  00        nop
-19CC  13        inx     d
-19CD  08        nop                  ;Note: Alternative opcode used
-19CE  0E 0D     mvi     c,$0D
-19D0  28        nop                  ;Note: Alternative opcode used
+19BE  28        
+19BF  13        
+19C0  00        
+19C1  08        
+19C2  13        
+19C3  0E 26     
+19C5  02        
+19C6  0E 11     
+19C8  0F        
+19C9  0E 11     
+19CB  00        
+19CC  13        
+19CD  08        
+19CE  0E 0D     
+19D0  28        
+
+// set (20E9) to 1
 19D1  3E 01     mvi     a,$01
 19D3  32 E9 20  sta     $20E9
 19D6  C9        ret
+
+// clear (20E9)
 19D7  AF        xra     a
 19D8  C3 D3 19  jmp     $19D3
 
+// (2094) OR b and then OUT
 19DB  00        nop
 19DC  3A 94 20  lda     $2094
 19DF  A0        ana     b
@@ -4496,6 +4565,7 @@
 19E3  D3 03     out     $03
 19E5  C9        ret
 
+// TODO before the live number is drawn
 19E6  21 01 27  lxi     h,$2701
 19E9  CA FA 19  jz      $19FA
 19EC  11 60 1C  lxi     d,$1C60
@@ -4522,30 +4592,32 @@
 1A0F  37        stc                     // 1 -> CY
 1A10  C9        ret
 
-1A11  32 2B 24  sta     $242B
-1A14  1C        inr     e
-1A15  16 11     mvi     d,$11
-1A17  0D        dcr     c
-1A18  0A        ldax    b
-1A19  08        nop                  ;Note: Alternative opcode used
-1A1A  07        rlc
-1A1B  06 05     mvi     b,$05
-1A1D  04        inr     b
-1A1E  03        inx     b
-1A1F  02        stax    b
-1A20  01 34 2E  lxi     b,$2E34
-1A23  27        daa
-1A24  22 1C 18  shld    $181C
-1A27  15        dcr     d
-1A28  13        inx     d
-1A29  10        nop                  ;Note: Alternative opcode used
-1A2A  0E 0D     mvi     c,$0D
-1A2C  0C        inr     c
-1A2D  0B        dcx     b
-1A2E  09        dad     b
-1A2F  07        rlc
-1A30  05        dcr     b
-1A31  FF        rst     7
+1A11  32 2B 24
+1A14  1C      
+1A15  16 11   
+1A17  0D      
+1A18  0A      
+1A19  08      
+1A1A  07      
+1A1B  06 05   
+1A1D  04      
+1A1E  03      
+1A1F  02      
+1A20  01 34 2E
+1A23  27      
+1A24  22 1C 18
+1A27  15      
+1A28  13      
+1A29  10      
+1A2A  0E 0D   
+1A2C  0C      
+1A2D  0B      
+1A2E  09      
+1A2F  07      
+1A30  05      
+1A31  FF      
+
+// copy (de) to (hl), size b
 1A32  1A        ldax    d
 1A33  77        mov     m,a
 1A34  23        inx     h
@@ -4553,6 +4625,8 @@
 1A36  05        dcr     b
 1A37  C2 32 1A  jnz     $1A32
 1A3A  C9        ret
+
+// Copy data from m to regs
 1A3B  5E        mov     e,m
 1A3C  23        inx     h
 1A3D  56        mov     d,m
@@ -4565,6 +4639,8 @@
 1A44  61        mov     h,c
 1A45  6F        mov     l,a
 1A46  C9        ret
+
+HL/8 & 111111 | 10
 1A47  C5        push    b
 1A48  06 03     mvi     b,$03
 1A4A  7C        mov     a,h
@@ -4574,7 +4650,7 @@
 1A4E  1F        rar
 1A4F  6F        mov     l,a
 1A50  05        dcr     b
-1A51  C2 4A 1A  jnz     $1A4A
+1A51  C2 4A 1A  jnz     $1A4A // Loop
 1A54  7C        mov     a,h
 1A55  E6 3F     ani     $3F
 1A57  F6 20     ori     $20
@@ -4582,6 +4658,7 @@
 1A5A  C1        pop     b
 1A5B  C9        ret
 
+// Clear screen
 1A5C  21 00 24  lxi     h,$2400
 1A5F  36 00     mvi     m,$00
 1A61  23        inx     h
@@ -4590,6 +4667,7 @@
 1A65  C2 5F 1A  jnz     $1A5F
 1A68  C9        ret
 
+// Draw buncker
 1A69  C5        push    b
 1A6A  E5        push    h
 1A6B  1A        ldax    d
@@ -4606,6 +4684,8 @@
 1A7A  05        dcr     b
 1A7B  C2 69 1A  jnz     $1A69
 1A7E  C9        ret
+
+// Draw "lives" indicators
 1A7F  CD 2E 09  call    $092E
 1A82  A7        ana     a
 1A83  C8        rz
@@ -4616,1149 +4696,1150 @@
 1A8A  F1        pop     psw
 1A8B  21 01 25  lxi     h,$2501
 1A8E  E6 0F     ani     $0F
-1A90  C3 C5 09  jmp     $09C5
-1A93  00        nop
-1A94  00        nop
-1A95  00        nop
-1A96  00        nop
-1A97  FF        rst     7
-1A98  B8        cmp     b
-1A99  FE 20     cpi     $20
-1A9B  1C        inr     e
-1A9C  10        nop                  ;Note: Alternative opcode used
-1A9D  9E        sbb     m
-1A9E  00        nop
-1A9F  20        nop                  ;Note: Alternative opcode used
-1AA0  1C        inr     e
-1AA1  30        nop                  ;Note: Alternative opcode used
-1AA2  10        nop                  ;Note: Alternative opcode used
-1AA3  0B        dcx     b
-1AA4  08        nop                  ;Note: Alternative opcode used
-1AA5  07        rlc
-1AA6  06 00     mvi     b,$00
-1AA8  0C        inr     c
-1AA9  04        inr     b
-1AAA  26 0E     mvi     h,$0E
-1AAC  15        dcr     d
-1AAD  04        inr     b
-1AAE  11 26 26  lxi     d,$2626
-1AB1  0F        rrc
-1AB2  0B        dcx     b
-1AB3  00        nop
-1AB4  18        nop                  ;Note: Alternative opcode used
-1AB5  04        inr     b
-1AB6  11 24 26  lxi     d,$2624
-1AB9  25        dcr     h
-1ABA  1B        dcx     d
-1ABB  26 0E     mvi     h,$0E
-1ABD  11 26 1C  lxi     d,$1C26
-1AC0  0F        rrc
-1AC1  0B        dcx     b
-1AC2  00        nop
-1AC3  18        nop                  ;Note: Alternative opcode used
-1AC4  04        inr     b
-1AC5  11 12 26  lxi     d,$2612
-1AC8  01 14 13  lxi     b,$1314
-1ACB  13        inx     d
-1ACC  0E 0D     mvi     c,$0D
-1ACE  26 0E     mvi     h,$0E
-1AD0  0D        dcr     c
-1AD1  0B        dcx     b
-1AD2  18        nop                  ;Note: Alternative opcode used
-1AD3  26 1B     mvi     h,$1B
-1AD5  0F        rrc
-1AD6  0B        dcx     b
-1AD7  00        nop
-1AD8  18        nop                  ;Note: Alternative opcode used
-1AD9  04        inr     b
-1ADA  11 26 26  lxi     d,$2626
-1ADD  01 14 13  lxi     b,$1314
-1AE0  13        inx     d
-1AE1  0E 0D     mvi     c,$0D
-1AE3  26 26     mvi     h,$26
-1AE5  12        stax    d
-1AE6  02        stax    b
-1AE7  0E 11     mvi     c,$11
-1AE9  04        inr     b
-1AEA  24        inr     h
-1AEB  1B        dcx     d
-1AEC  25        dcr     h
-1AED  26 07     mvi     h,$07
-1AEF  08        nop                  ;Note: Alternative opcode used
-1AF0  3F        cmc
-1AF1  12        stax    d
-1AF2  02        stax    b
-1AF3  0E 11     mvi     c,$11
-1AF5  04        inr     b
-1AF6  26 12     mvi     h,$12
-1AF8  02        stax    b
-1AF9  0E 11     mvi     c,$11
-1AFB  04        inr     b
-1AFC  24        inr     h
-1AFD  1C        inr     e
-1AFE  25        dcr     h
-1AFF  26 01     mvi     h,$01
-1B01  00        nop
-1B02  00        nop
-1B03  10        nop                  ;Note: Alternative opcode used
-1B04  00        nop
-1B05  00        nop
-1B06  00        nop
-1B07  00        nop
-1B08  02        stax    b
-1B09  78        mov     a,b
-1B0A  38        nop                  ;Note: Alternative opcode used
-1B0B  78        mov     a,b
-1B0C  38        nop                  ;Note: Alternative opcode used
-1B0D  00        nop
-1B0E  F8        rm
-1B0F  00        nop
-1B10  00        nop
-1B11  80        add     b
-1B12  00        nop
-1B13  8E        adc     m
-1B14  02        stax    b
-1B15  FF        rst     7
-1B16  05        dcr     b
-1B17  0C        inr     c
-1B18  60        mov     h,b
-1B19  1C        inr     e
-1B1A  20        nop                  ;Note: Alternative opcode used
-1B1B  30        nop                  ;Note: Alternative opcode used
-1B1C  10        nop                  ;Note: Alternative opcode used
-1B1D  01 00 00  lxi     b,$0000
-1B20  00        nop
-1B21  00        nop
-1B22  00        nop
-1B23  BB        cmp     e
-1B24  03        inx     b
-1B25  00        nop
-1B26  10        nop                  ;Note: Alternative opcode used
-1B27  90        sub     b
-1B28  1C        inr     e
-1B29  28        nop                  ;Note: Alternative opcode used
-1B2A  30        nop                  ;Note: Alternative opcode used
-1B2B  01 04 00  lxi     b,$0004
-1B2E  FF        rst     7
-1B2F  FF        rst     7
-1B30  00        nop
-1B31  00        nop
-1B32  02        stax    b
-1B33  76        hlt
-1B34  04        inr     b
-1B35  00        nop
-1B36  00        nop
-1B37  00        nop
-1B38  00        nop
-1B39  00        nop
-1B3A  04        inr     b
-1B3B  EE 1C     xri     $1C
-1B3D  00        nop
-1B3E  00        nop
-1B3F  03        inx     b
-1B40  00        nop
-1B41  00        nop
-1B42  00        nop
-1B43  B6        ora     m
-1B44  04        inr     b
-1B45  00        nop
-1B46  00        nop
-1B47  01 00 1D  lxi     b,$1D00
-1B4A  04        inr     b
-1B4B  E2 1C 00  jpo     $001C
-1B4E  00        nop
-1B4F  03        inx     b
-1B50  00        nop
-1B51  00        nop
-1B52  00        nop
-1B53  82        add     d
-1B54  06 00     mvi     b,$00
-1B56  00        nop
-1B57  01 06 1D  lxi     b,$1D06
-1B5A  04        inr     b
-1B5B  D0        rnc
-1B5C  1C        inr     e
-1B5D  00        nop
-1B5E  00        nop
-1B5F  03        inx     b
-1B60  FF        rst     7
-1B61  00        nop
-1B62  C0        rnz
-1B63  1C        inr     e
-1B64  00        nop
-1B65  00        nop
-1B66  10        nop                  ;Note: Alternative opcode used
-1B67  21 01 00  lxi     h,$0001
-1B6A  30        nop                  ;Note: Alternative opcode used
-1B6B  00        nop
-1B6C  12        stax    d
-1B6D  00        nop
-1B6E  00        nop
-1B6F  00        nop
-1B70  0F        rrc
-1B71  0B        dcx     b
-1B72  00        nop
-1B73  18        nop                  ;Note: Alternative opcode used
-1B74  26 0F     mvi     h,$0F
-1B76  0B        dcx     b
-1B77  00        nop
-1B78  18        nop                  ;Note: Alternative opcode used
-1B79  04        inr     b
-1B7A  11 24 1B  lxi     d,$1B24
-1B7D  25        dcr     h
-1B7E  FC 00 01  cm      $0100
-1B81  FF        rst     7
-1B82  FF        rst     7
-1B83  00        nop
-1B84  00        nop
-1B85  00        nop
-1B86  20        nop                  ;Note: Alternative opcode used
-1B87  64        mov     h,h
-1B88  1D        dcr     e
-1B89  D0        rnc
-1B8A  29        dad     h
-1B8B  18        nop                  ;Note: Alternative opcode used
-1B8C  02        stax    b
-1B8D  54        mov     d,h
-1B8E  1D        dcr     e
-1B8F  00        nop
-1B90  08        nop                  ;Note: Alternative opcode used
-1B91  00        nop
-1B92  06 00     mvi     b,$00
-1B94  00        nop
-1B95  01 40 00  lxi     b,$0040
-1B98  01 00 00  lxi     b,$0000
-1B9B  10        nop                  ;Note: Alternative opcode used
-1B9C  9E        sbb     m
-1B9D  00        nop
-1B9E  20        nop                  ;Note: Alternative opcode used
-1B9F  1C        inr     e
-1BA0  00        nop
-1BA1  03        inx     b
-1BA2  04        inr     b
-1BA3  78        mov     a,b
-1BA4  14        inr     d
-1BA5  13        inx     d
-1BA6  08        nop                  ;Note: Alternative opcode used
-1BA7  1A        ldax    d
-1BA8  3D        dcr     a
-1BA9  68        mov     l,b
-1BAA  FC FC 68  cm      $68FC
-1BAD  3D        dcr     a
-1BAE  1A        ldax    d
-1BAF  00        nop
-1BB0  00        nop
-1BB1  00        nop
-1BB2  01 B8 98  lxi     b,$98B8
-1BB5  A0        ana     b
-1BB6  1B        dcx     d
-1BB7  10        nop                  ;Note: Alternative opcode used
-1BB8  FF        rst     7
-1BB9  00        nop
-1BBA  A0        ana     b
-1BBB  1B        dcx     d
-1BBC  00        nop
-1BBD  00        nop
-1BBE  00        nop
-1BBF  00        nop
-1BC0  00        nop
-1BC1  10        nop                  ;Note: Alternative opcode used
-1BC2  00        nop
-1BC3  0E 05     mvi     c,$05
-1BC5  00        nop
-1BC6  00        nop
-1BC7  00        nop
-1BC8  00        nop
-1BC9  00        nop
-1BCA  07        rlc
-1BCB  D0        rnc
-1BCC  1C        inr     e
-1BCD  C8        rz
-1BCE  9B        sbb     e
-1BCF  03        inx     b
-1BD0  00        nop
-1BD1  00        nop
-1BD2  03        inx     b
-1BD3  04        inr     b
-1BD4  78        mov     a,b
-1BD5  14        inr     d
-1BD6  0B        dcx     b
-1BD7  19        dad
-1BD8  3A 6D FA  lda     $FA6D
-1BDB  FA 6D 3A  jm      $3A6D
-1BDE  19        dad
-1BDF  00        nop
-1BE0  00        nop
-1BE1  00        nop
-1BE2  00        nop
-1BE3  00        nop
-1BE4  00        nop
-1BE5  00        nop
-1BE6  00        nop
-1BE7  00        nop
-1BE8  00        nop
-1BE9  01 00 00  lxi     b,$0000
-1BEC  01 74 1F  lxi     b,$1F74
-1BEF  00        nop
-1BF0  80        add     b
-1BF1  00        nop
-1BF2  00        nop
-1BF3  00        nop
-1BF4  00        nop
-1BF5  00        nop
-1BF6  1C        inr     e
-1BF7  2F        cma
-1BF8  00        nop
-1BF9  00        nop
-1BFA  1C        inr     e
-1BFB  27        daa
-1BFC  00        nop
-1BFD  00        nop
-1BFE  1C        inr     e
-1BFF  39        dad     sp
-1C00  00        nop
-1C01  00        nop
-1C02  39        dad     sp
-1C03  79        mov     a,c
-1C04  7A        mov     a,d
-1C05  6E        mov     l,m
-1C06  EC FA FA  cpe     $FAFA
-1C09  EC 6E 7A  cpe     $7A6E
-1C0C  79        mov     a,c
-1C0D  39        dad     sp
-1C0E  00        nop
-1C0F  00        nop
-1C10  00        nop
-1C11  00        nop
-1C12  00        nop
-1C13  78        mov     a,b
-1C14  1D        dcr     e
-1C15  BE        cmp     m
-1C16  6C        mov     l,h
-1C17  3C        inr     a
-1C18  3C        inr     a
-1C19  3C        inr     a
-1C1A  6C        mov     l,h
-1C1B  BE        cmp     m
-1C1C  1D        dcr     e
-1C1D  78        mov     a,b
-1C1E  00        nop
-1C1F  00        nop
-1C20  00        nop
-1C21  00        nop
-1C22  00        nop
-1C23  00        nop
-1C24  19        dad
-1C25  3A 6D FA  lda     $FA6D
-1C28  FA 6D 3A  jm      $3A6D
-1C2B  19        dad
-1C2C  00        nop
-1C2D  00        nop
-1C2E  00        nop
-1C2F  00        nop
-1C30  00        nop
-1C31  00        nop
-1C32  38        nop                  ;Note: Alternative opcode used
-1C33  7A        mov     a,d
-1C34  7F        mov     a,a
-1C35  6D        mov     l,l
-1C36  EC FA FA  cpe     $FAFA
-1C39  EC 6D 7F  cpe     $7F6D
-1C3C  7A        mov     a,d
-1C3D  38        nop                  ;Note: Alternative opcode used
-1C3E  00        nop
-1C3F  00        nop
-1C40  00        nop
-1C41  00        nop
-1C42  00        nop
-1C43  0E 18     mvi     c,$18
-1C45  BE        cmp     m
-1C46  6D        mov     l,l
-1C47  3D        dcr     a
-1C48  3C        inr     a
-1C49  3D        dcr     a
-1C4A  6D        mov     l,l
-1C4B  BE        cmp     m
-1C4C  18        nop                  ;Note: Alternative opcode used
-1C4D  0E 00     mvi     c,$00
-1C4F  00        nop
-1C50  00        nop
-1C51  00        nop
-1C52  00        nop
-1C53  00        nop
-1C54  1A        ldax    d
-1C55  3D        dcr     a
-1C56  68        mov     l,b
-1C57  FC FC 68  cm      $68FC
-1C5A  3D        dcr     a
-1C5B  1A        ldax    d
-1C5C  00        nop
-1C5D  00        nop
-1C5E  00        nop
-1C5F  00        nop
-1C60  00        nop
-1C61  00        nop
-1C62  0F        rrc
-1C63  1F        rar
-1C64  1F        rar
-1C65  1F        rar
-1C66  1F        rar
-1C67  7F        mov     a,a
-1C68  FF        rst     7
-1C69  7F        mov     a,a
-1C6A  1F        rar
-1C6B  1F        rar
-1C6C  1F        rar
-1C6D  1F        rar
-1C6E  0F        rrc
-1C6F  00        nop
-1C70  00        nop
-1C71  04        inr     b
-1C72  01 13 03  lxi     b,$0313
-1C75  07        rlc
-1C76  B3        ora     e
-1C77  0F        rrc
-1C78  2F        cma
-1C79  03        inx     b
-1C7A  2F        cma
-1C7B  49        mov     c,c
-1C7C  04        inr     b
-1C7D  03        inx     b
-1C7E  00        nop
-1C7F  01 40 08  lxi     b,$0840
-1C82  05        dcr     b
-1C83  A3        ana     e
-1C84  0A        ldax    b
-1C85  03        inx     b
-1C86  5B        mov     e,e
-1C87  0F        rrc
-1C88  27        daa
-1C89  27        daa
-1C8A  0B        dcx     b
-1C8B  4B        mov     c,e
-1C8C  40        mov     b,b
-1C8D  84        add     h
-1C8E  11 48 0F  lxi     d,$0F48
-1C91  99        sbb     c
-1C92  3C        inr     a
-1C93  7E        mov     a,m
-1C94  3D        dcr     a
-1C95  BC        cmp     h
-1C96  3E 7C     mvi     a,'|'
-1C98  99        sbb     c
-1C99  27        daa
-1C9A  1B        dcx     d
-1C9B  1A        ldax    d
-1C9C  26 0F     mvi     h,$0F
-1C9E  0E 08     mvi     c,$08
-1CA0  0D        dcr     c
-1CA1  13        inx     d
-1CA2  12        stax    d
-1CA3  28        nop                  ;Note: Alternative opcode used
-1CA4  12        stax    d
-1CA5  02        stax    b
-1CA6  0E 11     mvi     c,$11
-1CA8  04        inr     b
-1CA9  26 00     mvi     h,$00
-1CAB  03        inx     b
-1CAC  15        dcr     d
-1CAD  00        nop
-1CAE  0D        dcr     c
-1CAF  02        stax    b
-1CB0  04        inr     b
-1CB1  26 13     mvi     h,$13
-1CB3  00        nop
-1CB4  01 0B 04  lxi     b,$040B
-1CB7  28        nop                  ;Note: Alternative opcode used
-1CB8  02        stax    b
-1CB9  10        nop                  ;Note: Alternative opcode used
-1CBA  20        nop                  ;Note: Alternative opcode used
-1CBB  30        nop                  ;Note: Alternative opcode used
-1CBC  13        inx     d
-1CBD  08        nop                  ;Note: Alternative opcode used
-1CBE  0B        dcx     b
-1CBF  13        inx     d
-1CC0  00        nop
-1CC1  08        nop                  ;Note: Alternative opcode used
-1CC2  49        mov     c,c
-1CC3  22 14 81  shld    $8114
-1CC6  42        mov     b,d
-1CC7  00        nop
-1CC8  42        mov     b,d
-1CC9  81        add     c
-1CCA  14        inr     d
-1CCB  22 49 08  shld    $0849
-1CCE  00        nop
-1CCF  00        nop
-1CD0  44        mov     b,h
-1CD1  AA        xra     d
-1CD2  10        nop                  ;Note: Alternative opcode used
-1CD3  88        adc     b
-1CD4  54        mov     d,h
-1CD5  22 10 AA  shld    $AA10
-1CD8  44        mov     b,h
-1CD9  22 54 88  shld    $8854
-1CDC  4A        mov     c,d
-1CDD  15        dcr     d
-1CDE  BE        cmp     m
-1CDF  3F        cmc
-1CE0  5E        mov     e,m
-1CE1  25        dcr     h
-1CE2  04        inr     b
-1CE3  FC 04 10  cm      $1004
-1CE6  FC 10 20  cm      $2010
-1CE9  FC 20 80  cm      $8020
-1CEC  FC 80 00  cm      $0080
-1CEF  FE 00     cpi     $00
-1CF1  24        inr     h
-1CF2  FE 12     cpi     $12
-1CF4  00        nop
-1CF5  FE 00     cpi     $00
-1CF7  48        mov     c,b
-1CF8  FE 90     cpi     $90
-1CFA  0F        rrc
-1CFB  0B        dcx     b
-1CFC  00        nop
-1CFD  29        dad     h
-1CFE  00        nop
-1CFF  00        nop
-1D00  01 07 01  lxi     b,$0107
-1D03  01 01 04  lxi     b,$0401
-1D06  0B        dcx     b
-1D07  01 06 03  lxi     b,$0306
-1D0A  01 01 0B  lxi     b,$0B01
-1D0D  09        dad     b
-1D0E  02        stax    b
-1D0F  08        nop                  ;Note: Alternative opcode used
-1D10  02        stax    b
-1D11  0B        dcx     b
-1D12  04        inr     b
-1D13  07        rlc
-1D14  0A        ldax    b
-1D15  05        dcr     b
-1D16  02        stax    b
-1D17  05        dcr     b
-1D18  04        inr     b
-1D19  06 07     mvi     b,$07
-1D1B  08        nop                  ;Note: Alternative opcode used
-1D1C  0A        ldax    b
-1D1D  06 0A     mvi     b,$0A
-1D1F  03        inx     b
-1D20  FF        rst     7
-1D21  0F        rrc
-1D22  FF        rst     7
-1D23  1F        rar
-1D24  FF        rst     7
-1D25  3F        cmc
-1D26  FF        rst     7
-1D27  7F        mov     a,a
-1D28  FF        rst     7
-1D29  FF        rst     7
-1D2A  FC FF F8  cm      $F8FF
-1D2D  FF        rst     7
-1D2E  F0        rp
-1D2F  FF        rst     7
-1D30  F0        rp
-1D31  FF        rst     7
-1D32  F0        rp
-1D33  FF        rst     7
-1D34  F0        rp
-1D35  FF        rst     7
-1D36  F0        rp
-1D37  FF        rst     7
-1D38  F0        rp
-1D39  FF        rst     7
-1D3A  F0        rp
-1D3B  FF        rst     7
-1D3C  F8        rm
-1D3D  FF        rst     7
-1D3E  FC FF FF  cm      $FFFF
-1D41  FF        rst     7
-1D42  FF        rst     7
-1D43  FF        rst     7
-1D44  FF        rst     7
-1D45  7F        mov     a,a
-1D46  FF        rst     7
-1D47  3F        cmc
-1D48  FF        rst     7
-1D49  1F        rar
-1D4A  FF        rst     7
-1D4B  0F        rrc
-1D4C  05        dcr     b
-1D4D  10        nop                  ;Note: Alternative opcode used
-1D4E  15        dcr     d
-1D4F  30        nop                  ;Note: Alternative opcode used
-1D50  94        sub     h
-1D51  97        sub     a
-1D52  9A        sbb     d
-1D53  9D        sbb     l
-1D54  10        nop                  ;Note: Alternative opcode used
-1D55  05        dcr     b
-1D56  05        dcr     b
-1D57  10        nop                  ;Note: Alternative opcode used
-1D58  15        dcr     d
-1D59  10        nop                  ;Note: Alternative opcode used
-1D5A  10        nop                  ;Note: Alternative opcode used
-1D5B  05        dcr     b
-1D5C  30        nop                  ;Note: Alternative opcode used
-1D5D  10        nop                  ;Note: Alternative opcode used
-1D5E  10        nop                  ;Note: Alternative opcode used
-1D5F  10        nop                  ;Note: Alternative opcode used
-1D60  05        dcr     b
-1D61  15        dcr     d
-1D62  10        nop                  ;Note: Alternative opcode used
-1D63  05        dcr     b
-1D64  00        nop
-1D65  00        nop
-1D66  00        nop
-1D67  00        nop
-1D68  04        inr     b
-1D69  0C        inr     c
-1D6A  1E 37     mvi     e,$37
-1D6C  3E 7C     mvi     a,'|'
-1D6E  74        mov     m,h
-1D6F  7E        mov     a,m
-1D70  7E        mov     a,m
-1D71  74        mov     m,h
-1D72  7C        mov     a,h
-1D73  3E 37     mvi     a,$37
-1D75  1E 0C     mvi     e,$0C
-1D77  04        inr     b
-1D78  00        nop
-1D79  00        nop
-1D7A  00        nop
-1D7B  00        nop
-1D7C  00        nop
-1D7D  22 00 A5  shld    $A500
-1D80  40        mov     b,b
-1D81  08        nop                  ;Note: Alternative opcode used
-1D82  98        sbb     b
-1D83  3D        dcr     a
-1D84  B6        ora     m
-1D85  3C        inr     a
-1D86  36 1D     mvi     m,$1D
-1D88  10        nop                  ;Note: Alternative opcode used
-1D89  48        mov     c,b
-1D8A  62        mov     h,d
-1D8B  B6        ora     m
-1D8C  1D        dcr     e
-1D8D  98        sbb     b
-1D8E  08        nop                  ;Note: Alternative opcode used
-1D8F  42        mov     b,d
-1D90  90        sub     b
-1D91  08        nop                  ;Note: Alternative opcode used
-1D92  00        nop
-1D93  00        nop
-1D94  26 1F     mvi     h,$1F
-1D96  1A        ldax    d
-1D97  1B        dcx     d
-1D98  1A        ldax    d
-1D99  1A        ldax    d
-1D9A  1B        dcx     d
-1D9B  1F        rar
-1D9C  1A        ldax    d
-1D9D  1D        dcr     e
-1D9E  1A        ldax    d
-1D9F  1A        ldax    d
-1DA0  10        nop                  ;Note: Alternative opcode used
-1DA1  20        nop                  ;Note: Alternative opcode used
-1DA2  30        nop                  ;Note: Alternative opcode used
-1DA3  60        mov     h,b
-1DA4  50        mov     d,b
-1DA5  48        mov     c,b
-1DA6  48        mov     c,b
-1DA7  48        mov     c,b
-1DA8  40        mov     b,b
-1DA9  40        mov     b,b
-1DAA  40        mov     b,b
-1DAB  0F        rrc
-1DAC  0B        dcx     b
-1DAD  00        nop
-1DAE  18        nop                  ;Note: Alternative opcode used
-1DAF  12        stax    d
-1DB0  0F        rrc
-1DB1  00        nop
-1DB2  02        stax    b
-1DB3  04        inr     b
-1DB4  26 26     mvi     h,$26
-1DB6  08        nop                  ;Note: Alternative opcode used
-1DB7  0D        dcr     c
-1DB8  15        dcr     d
-1DB9  00        nop
-1DBA  03        inx     b
-1DBB  04        inr     b
-1DBC  11 12 0E  lxi     d,$0E12
-1DBF  2C        inr     l
-1DC0  68        mov     l,b
-1DC1  1D        dcr     e
-1DC2  0C        inr     c
-1DC3  2C        inr     l
-1DC4  20        nop                  ;Note: Alternative opcode used
-1DC5  1C        inr     e
-1DC6  0A        ldax    b
-1DC7  2C        inr     l
-1DC8  40        mov     b,b
-1DC9  1C        inr     e
-1DCA  08        nop                  ;Note: Alternative opcode used
-1DCB  2C        inr     l
-1DCC  00        nop
-1DCD  1C        inr     e
-1DCE  FF        rst     7
-1DCF  0E 2E     mvi     c,$2E
-1DD1  E0        rpo
-1DD2  1D        dcr     e
-1DD3  0C        inr     c
-1DD4  2E EA     mvi     l,$EA
-1DD6  1D        dcr     e
-1DD7  0A        ldax    b
-1DD8  2E F4     mvi     l,$F4
-1DDA  1D        dcr     e
-1DDB  08        nop                  ;Note: Alternative opcode used
-1DDC  2E 99     mvi     l,$99
-1DDE  1C        inr     e
-1DDF  FF        rst     7
-1DE0  27        daa
-1DE1  38        nop                  ;Note: Alternative opcode used
-1DE2  26 0C     mvi     h,$0C
-1DE4  18        nop                  ;Note: Alternative opcode used
-1DE5  12        stax    d
-1DE6  13        inx     d
-1DE7  04        inr     b
-1DE8  11 18 27  lxi     d,$2718
-1DEB  1D        dcr     e
-1DEC  1A        ldax    d
-1DED  26 0F     mvi     h,$0F
-1DEF  0E 08     mvi     c,$08
-1DF1  0D        dcr     c
-1DF2  13        inx     d
-1DF3  12        stax    d
-1DF4  27        daa
-1DF5  1C        inr     e
-1DF6  1A        ldax    d
-1DF7  26 0F     mvi     h,$0F
-1DF9  0E 08     mvi     c,$08
-1DFB  0D        dcr     c
-1DFC  13        inx     d
-1DFD  12        stax    d
-1DFE  00        nop
-1DFF  00        nop
-1E00  00        nop
-1E01  1F        rar
-1E02  24        inr     h
-1E03  44        mov     b,h
-1E04  24        inr     h
-1E05  1F        rar
-1E06  00        nop
-1E07  00        nop
-1E08  00        nop
-1E09  7F        mov     a,a
-1E0A  49        mov     c,c
-1E0B  49        mov     c,c
-1E0C  49        mov     c,c
-1E0D  36 00     mvi     m,$00
-1E0F  00        nop
-1E10  00        nop
-1E11  3E 41     mvi     a,'A'
-1E13  41        mov     b,c
-1E14  41        mov     b,c
-1E15  22 00 00  shld    $0000
-1E18  00        nop
-1E19  7F        mov     a,a
-1E1A  41        mov     b,c
-1E1B  41        mov     b,c
-1E1C  41        mov     b,c
-1E1D  3E 00     mvi     a,$00
-1E1F  00        nop
-1E20  00        nop
-1E21  7F        mov     a,a
-1E22  49        mov     c,c
-1E23  49        mov     c,c
-1E24  49        mov     c,c
-1E25  41        mov     b,c
-1E26  00        nop
-1E27  00        nop
-1E28  00        nop
-1E29  7F        mov     a,a
-1E2A  48        mov     c,b
-1E2B  48        mov     c,b
-1E2C  48        mov     c,b
-1E2D  40        mov     b,b
-1E2E  00        nop
-1E2F  00        nop
-1E30  00        nop
-1E31  3E 41     mvi     a,'A'
-1E33  41        mov     b,c
-1E34  45        mov     b,l
-1E35  47        mov     b,a
-1E36  00        nop
-1E37  00        nop
-1E38  00        nop
-1E39  7F        mov     a,a
-1E3A  08        nop                  ;Note: Alternative opcode used
-1E3B  08        nop                  ;Note: Alternative opcode used
-1E3C  08        nop                  ;Note: Alternative opcode used
-1E3D  7F        mov     a,a
-1E3E  00        nop
-1E3F  00        nop
-1E40  00        nop
-1E41  00        nop
-1E42  41        mov     b,c
-1E43  7F        mov     a,a
-1E44  41        mov     b,c
-1E45  00        nop
-1E46  00        nop
-1E47  00        nop
-1E48  00        nop
-1E49  02        stax    b
-1E4A  01 01 01  lxi     b,$0101
-1E4D  7E        mov     a,m
-1E4E  00        nop
-1E4F  00        nop
-1E50  00        nop
-1E51  7F        mov     a,a
-1E52  08        nop                  ;Note: Alternative opcode used
-1E53  14        inr     d
-1E54  22 41 00  shld    $0041
-1E57  00        nop
-1E58  00        nop
-1E59  7F        mov     a,a
-1E5A  01 01 01  lxi     b,$0101
-1E5D  01 00 00  lxi     b,$0000
-1E60  00        nop
-1E61  7F        mov     a,a
-1E62  20        nop                  ;Note: Alternative opcode used
-1E63  18        nop                  ;Note: Alternative opcode used
-1E64  20        nop                  ;Note: Alternative opcode used
-1E65  7F        mov     a,a
-1E66  00        nop
-1E67  00        nop
-1E68  00        nop
-1E69  7F        mov     a,a
-1E6A  10        nop                  ;Note: Alternative opcode used
-1E6B  08        nop                  ;Note: Alternative opcode used
-1E6C  04        inr     b
-1E6D  7F        mov     a,a
-1E6E  00        nop
-1E6F  00        nop
-1E70  00        nop
-1E71  3E 41     mvi     a,'A'
-1E73  41        mov     b,c
-1E74  41        mov     b,c
-1E75  3E 00     mvi     a,$00
-1E77  00        nop
-1E78  00        nop
-1E79  7F        mov     a,a
-1E7A  48        mov     c,b
-1E7B  48        mov     c,b
-1E7C  48        mov     c,b
-1E7D  30        nop                  ;Note: Alternative opcode used
-1E7E  00        nop
-1E7F  00        nop
-1E80  00        nop
-1E81  3E 41     mvi     a,'A'
-1E83  45        mov     b,l
-1E84  42        mov     b,d
-1E85  3D        dcr     a
-1E86  00        nop
-1E87  00        nop
-1E88  00        nop
-1E89  7F        mov     a,a
-1E8A  48        mov     c,b
-1E8B  4C        mov     c,h
-1E8C  4A        mov     c,d
-1E8D  31 00 00  lxi     sp,$0000
-1E90  00        nop
-1E91  32 49 49  sta     $4949
-1E94  49        mov     c,c
-1E95  26 00     mvi     h,$00
-1E97  00        nop
-1E98  00        nop
-1E99  40        mov     b,b
-1E9A  40        mov     b,b
-1E9B  7F        mov     a,a
-1E9C  40        mov     b,b
-1E9D  40        mov     b,b
-1E9E  00        nop
-1E9F  00        nop
-1EA0  00        nop
-1EA1  7E        mov     a,m
-1EA2  01 01 01  lxi     b,$0101
-1EA5  7E        mov     a,m
-1EA6  00        nop
-1EA7  00        nop
-1EA8  00        nop
-1EA9  7C        mov     a,h
-1EAA  02        stax    b
-1EAB  01 02 7C  lxi     b,$7C02
-1EAE  00        nop
-1EAF  00        nop
-1EB0  00        nop
-1EB1  7F        mov     a,a
-1EB2  02        stax    b
-1EB3  0C        inr     c
-1EB4  02        stax    b
-1EB5  7F        mov     a,a
-1EB6  00        nop
-1EB7  00        nop
-1EB8  00        nop
-1EB9  63        mov     h,e
-1EBA  14        inr     d
-1EBB  08        nop                  ;Note: Alternative opcode used
-1EBC  14        inr     d
-1EBD  63        mov     h,e
-1EBE  00        nop
-1EBF  00        nop
-1EC0  00        nop
-1EC1  60        mov     h,b
-1EC2  10        nop                  ;Note: Alternative opcode used
-1EC3  0F        rrc
-1EC4  10        nop                  ;Note: Alternative opcode used
-1EC5  60        mov     h,b
-1EC6  00        nop
-1EC7  00        nop
-1EC8  00        nop
-1EC9  43        mov     b,e
-1ECA  45        mov     b,l
-1ECB  49        mov     c,c
-1ECC  51        mov     d,c
-1ECD  61        mov     h,c
-1ECE  00        nop
-1ECF  00        nop
-1ED0  00        nop
-1ED1  3E 45     mvi     a,'E'
-1ED3  49        mov     c,c
-1ED4  51        mov     d,c
-1ED5  3E 00     mvi     a,$00
-1ED7  00        nop
-1ED8  00        nop
-1ED9  00        nop
-1EDA  21 7F 01  lxi     h,$017F
-1EDD  00        nop
-1EDE  00        nop
-1EDF  00        nop
-1EE0  00        nop
-1EE1  23        inx     h
-1EE2  45        mov     b,l
-1EE3  49        mov     c,c
-1EE4  49        mov     c,c
-1EE5  31 00 00  lxi     sp,$0000
-1EE8  00        nop
-1EE9  42        mov     b,d
-1EEA  41        mov     b,c
-1EEB  49        mov     c,c
-1EEC  59        mov     e,c
-1EED  66        mov     h,m
-1EEE  00        nop
-1EEF  00        nop
-1EF0  00        nop
-1EF1  0C        inr     c
-1EF2  14        inr     d
-1EF3  24        inr     h
-1EF4  7F        mov     a,a
-1EF5  04        inr     b
-1EF6  00        nop
-1EF7  00        nop
-1EF8  00        nop
-1EF9  72        mov     m,d
-1EFA  51        mov     d,c
-1EFB  51        mov     d,c
-1EFC  51        mov     d,c
-1EFD  4E        mov     c,m
-1EFE  00        nop
-1EFF  00        nop
-1F00  00        nop
-1F01  1E 29     mvi     e,$29
-1F03  49        mov     c,c
-1F04  49        mov     c,c
-1F05  46        mov     b,m
-1F06  00        nop
-1F07  00        nop
-1F08  00        nop
-1F09  40        mov     b,b
-1F0A  47        mov     b,a
-1F0B  48        mov     c,b
-1F0C  50        mov     d,b
-1F0D  60        mov     h,b
-1F0E  00        nop
-1F0F  00        nop
-1F10  00        nop
-1F11  36 49     mvi     m,'I'
-1F13  49        mov     c,c
-1F14  49        mov     c,c
-1F15  36 00     mvi     m,$00
-1F17  00        nop
-1F18  00        nop
-1F19  31 49 49  lxi     sp,$4949
-1F1C  4A        mov     c,d
-1F1D  3C        inr     a
-1F1E  00        nop
-1F1F  00        nop
-1F20  00        nop
-1F21  08        nop                  ;Note: Alternative opcode used
-1F22  14        inr     d
-1F23  22 41 00  shld    $0041
-1F26  00        nop
-1F27  00        nop
-1F28  00        nop
-1F29  00        nop
-1F2A  41        mov     b,c
-1F2B  22 14 08  shld    $0814
-1F2E  00        nop
-1F2F  00        nop
-1F30  00        nop
-1F31  00        nop
-1F32  00        nop
-1F33  00        nop
-1F34  00        nop
-1F35  00        nop
-1F36  00        nop
-1F37  00        nop
-1F38  00        nop
-1F39  14        inr     d
-1F3A  14        inr     d
-1F3B  14        inr     d
-1F3C  14        inr     d
-1F3D  14        inr     d
-1F3E  00        nop
-1F3F  00        nop
-1F40  00        nop
-1F41  22 14 7F  shld    $7F14
-1F44  14        inr     d
-1F45  22 00 00  shld    $0000
-1F48  00        nop
-1F49  03        inx     b
-1F4A  04        inr     b
-1F4B  78        mov     a,b
-1F4C  04        inr     b
-1F4D  03        inx     b
-1F4E  00        nop
-1F4F  00        nop
-1F50  24        inr     h
-1F51  1B        dcx     d
-1F52  26 0E     mvi     h,$0E
-1F54  11 26 1C  lxi     d,$1C26
-1F57  26 0F     mvi     h,$0F
-1F59  0B        dcx     b
-1F5A  00        nop
-1F5B  18        nop                  ;Note: Alternative opcode used
-1F5C  04        inr     b
-1F5D  11 12 25  lxi     d,$2512
-1F60  26 26     mvi     h,$26
-1F62  28        nop                  ;Note: Alternative opcode used
-1F63  1B        dcx     d
-1F64  26 0F     mvi     h,$0F
-1F66  0B        dcx     b
-1F67  00        nop
-1F68  18        nop                  ;Note: Alternative opcode used
-1F69  04        inr     b
-1F6A  11 26 26  lxi     d,$2626
-1F6D  1B        dcx     d
-1F6E  26 02     mvi     h,$02
-1F70  0E 08     mvi     c,$08
-1F72  0D        dcr     c
-1F73  26 01     mvi     h,$01
-1F75  01 00 00  lxi     b,$0000
-1F78  01 00 02  lxi     b,$0200
-1F7B  01 00 02  lxi     b,$0200
-1F7E  01 00 60  lxi     b,$6000
-1F81  10        nop                  ;Note: Alternative opcode used
-1F82  0F        rrc
-1F83  10        nop                  ;Note: Alternative opcode used
-1F84  60        mov     h,b
-1F85  30        nop                  ;Note: Alternative opcode used
-1F86  18        nop                  ;Note: Alternative opcode used
-1F87  1A        ldax    d
-1F88  3D        dcr     a
-1F89  68        mov     l,b
-1F8A  FC FC 68  cm      $68FC
-1F8D  3D        dcr     a
-1F8E  1A        ldax    d
-1F8F  00        nop
-1F90  08        nop                  ;Note: Alternative opcode used
-1F91  0D        dcr     c
-1F92  12        stax    d
-1F93  04        inr     b
-1F94  11 13 26  lxi     d,$2613
-1F97  26 02     mvi     h,$02
-1F99  0E 08     mvi     c,$08
-1F9B  0D        dcr     c
-1F9C  0D        dcr     c
-1F9D  2A 50 1F  lhld    $1F50
-1FA0  0A        ldax    b
-1FA1  2A 62 1F  lhld    $1F62
-1FA4  07        rlc
-1FA5  2A E1 1F  lhld    $1FE1
-1FA8  FF        rst     7
-1FA9  02        stax    b
-1FAA  11 04 03  lxi     d,$0304
-1FAD  08        nop                  ;Note: Alternative opcode used
-1FAE  13        inx     d
-1FAF  26 00     mvi     h,$00
-1FB1  60        mov     h,b
-1FB2  10        nop                  ;Note: Alternative opcode used
-1FB3  0F        rrc
-1FB4  10        nop                  ;Note: Alternative opcode used
-1FB5  60        mov     h,b
-1FB6  38        nop                  ;Note: Alternative opcode used
-1FB7  19        dad
-1FB8  3A 6D FA  lda     $FA6D
-1FBB  FA 6D 3A  jm      $3A6D
-1FBE  19        dad
-1FBF  00        nop
-1FC0  00        nop
-1FC1  20        nop                  ;Note: Alternative opcode used
-1FC2  40        mov     b,b
-1FC3  4D        mov     c,l
-1FC4  50        mov     d,b
-1FC5  20        nop                  ;Note: Alternative opcode used
-1FC6  00        nop
-1FC7  00        nop
-1FC8  00        nop
-1FC9  00        nop
-1FCA  00        nop
-1FCB  FF        rst     7
-1FCC  B8        cmp     b
-1FCD  FF        rst     7
-1FCE  80        add     b
-1FCF  1F        rar
-1FD0  10        nop                  ;Note: Alternative opcode used
-1FD1  97        sub     a
-1FD2  00        nop
-1FD3  80        add     b
-1FD4  1F        rar
-1FD5  00        nop
-1FD6  00        nop
-1FD7  01 D0 22  lxi     b,$22D0
-1FDA  20        nop                  ;Note: Alternative opcode used
-1FDB  1C        inr     e
-1FDC  10        nop                  ;Note: Alternative opcode used
-1FDD  94        sub     h
-1FDE  00        nop
-1FDF  20        nop                  ;Note: Alternative opcode used
-1FE0  1C        inr     e
-1FE1  28        nop                  ;Note: Alternative opcode used
-1FE2  1C        inr     e
-1FE3  26 0F     mvi     h,$0F
-1FE5  0B        dcx     b
-1FE6  00        nop
-1FE7  18        nop                  ;Note: Alternative opcode used
-1FE8  04        inr     b
-1FE9  11 12 26  lxi     d,$2612
-1FEC  1C        inr     e
-1FED  26 02     mvi     h,$02
-1FEF  0E 08     mvi     c,$08
-1FF1  0D        dcr     c
-1FF2  12        stax    d
-1FF3  0F        rrc
-1FF4  14        inr     d
-1FF5  12        stax    d
-1FF6  07        rlc
-1FF7  26 00     mvi     h,$00
-1FF9  08        nop                  ;Note: Alternative opcode used
-1FFA  08        nop                  ;Note: Alternative opcode used
-1FFB  08        nop                  ;Note: Alternative opcode used
-1FFC  08        nop                  ;Note: Alternative opcode used
-1FFD  08        nop                  ;Note: Alternative opcode used
-1FFE  00        nop
-1FFF  00        nop
-2000            end
+1A90  C3 C5 09  jmp     $09C5       // Draw lives number
+
+1A93  00        
+1A94  00        
+1A95  00        
+1A96  00        
+1A97  FF        
+1A98  B8        
+1A99  FE 20     
+1A9B  1C        
+1A9C  10        
+1A9D  9E        
+1A9E  00        
+1A9F  20        
+1AA0  1C        
+1AA1  30        
+1AA2  10        
+1AA3  0B        
+1AA4  08        
+1AA5  07        
+1AA6  06 00     
+1AA8  0C        
+1AA9  04        
+1AAA  26 0E     
+1AAC  15        
+1AAD  04        
+1AAE  11 26 26  
+1AB1  0F        
+1AB2  0B        
+1AB3  00        
+1AB4  18        
+1AB5  04        
+1AB6  11 24 26  
+1AB9  25        
+1ABA  1B        
+1ABB  26 0E     
+1ABD  11 26 1C  
+1AC0  0F        
+1AC1  0B        
+1AC2  00        
+1AC3  18        
+1AC4  04        
+1AC5  11 12 26  
+1AC8  01 14 13  
+1ACB  13        
+1ACC  0E 0D     
+1ACE  26 0E     
+1AD0  0D        
+1AD1  0B        
+1AD2  18        
+1AD3  26 1B     
+1AD5  0F        
+1AD6  0B        
+1AD7  00        
+1AD8  18        
+1AD9  04        
+1ADA  11 26 26  
+1ADD  01 14 13  
+1AE0  13        
+1AE1  0E 0D     
+1AE3  26 26     
+1AE5  12        
+1AE6  02        
+1AE7  0E 11     
+1AE9  04        
+1AEA  24        
+1AEB  1B        
+1AEC  25        
+1AED  26 07     
+1AEF  08        
+1AF0  3F        
+1AF1  12        
+1AF2  02        
+1AF3  0E 11     
+1AF5  04        
+1AF6  26 12     
+1AF8  02        
+1AF9  0E 11     
+1AFB  04        
+1AFC  24        
+1AFD  1C        
+1AFE  25        
+1AFF  26 01     
+1B01  00        
+1B02  00        
+1B03  10        
+1B04  00        
+1B05  00        
+1B06  00        
+1B07  00        
+1B08  02        
+1B09  78        
+1B0A  38        
+1B0B  78        
+1B0C  38        
+1B0D  00        
+1B0E  F8        
+1B0F  00        
+1B10  00        
+1B11  80        
+1B12  00        
+1B13  8E        
+1B14  02        
+1B15  FF        
+1B16  05        
+1B17  0C        
+1B18  60        
+1B19  1C        
+1B1A  20        
+1B1B  30        
+1B1C  10        
+1B1D  01 00 00  
+1B20  00        
+1B21  00        
+1B22  00        
+1B23  BB        
+1B24  03        
+1B25  00        
+1B26  10        
+1B27  90        
+1B28  1C        
+1B29  28        
+1B2A  30        
+1B2B  01 04 00  
+1B2E  FF        
+1B2F  FF        
+1B30  00        
+1B31  00        
+1B32  02        
+1B33  76        
+1B34  04        
+1B35  00        
+1B36  00        
+1B37  00        
+1B38  00        
+1B39  00        
+1B3A  04        
+1B3B  EE 1C     
+1B3D  00        
+1B3E  00        
+1B3F  03        
+1B40  00        
+1B41  00        
+1B42  00        
+1B43  B6        
+1B44  04        
+1B45  00        
+1B46  00        
+1B47  01 00 1D  
+1B4A  04        
+1B4B  E2 1C 00  
+1B4E  00        
+1B4F  03        
+1B50  00        
+1B51  00        
+1B52  00        
+1B53  82        
+1B54  06 00     
+1B56  00        
+1B57  01 06 1D  
+1B5A  04        
+1B5B  D0        
+1B5C  1C        
+1B5D  00        
+1B5E  00        
+1B5F  03        
+1B60  FF        
+1B61  00        
+1B62  C0        
+1B63  1C        
+1B64  00        
+1B65  00        
+1B66  10        
+1B67  21 01 00  
+1B6A  30        
+1B6B  00        
+1B6C  12        
+1B6D  00        
+1B6E  00        
+1B6F  00        
+1B70  0F        
+1B71  0B        
+1B72  00        
+1B73  18        
+1B74  26 0F     
+1B76  0B        
+1B77  00        
+1B78  18        
+1B79  04        
+1B7A  11 24 1B  
+1B7D  25        
+1B7E  FC 00 01  
+1B81  FF        
+1B82  FF        
+1B83  00        
+1B84  00        
+1B85  00        
+1B86  20        
+1B87  64        
+1B88  1D        
+1B89  D0        
+1B8A  29        
+1B8B  18        
+1B8C  02        
+1B8D  54        
+1B8E  1D        
+1B8F  00        
+1B90  08        
+1B91  00        
+1B92  06 00     
+1B94  00        
+1B95  01 40 00  
+1B98  01 00 00  
+1B9B  10        
+1B9C  9E        
+1B9D  00        
+1B9E  20        
+1B9F  1C        
+1BA0  00        
+1BA1  03        
+1BA2  04        
+1BA3  78        
+1BA4  14        
+1BA5  13        
+1BA6  08        
+1BA7  1A        
+1BA8  3D        
+1BA9  68        
+1BAA  FC FC 68  
+1BAD  3D        
+1BAE  1A        
+1BAF  00        
+1BB0  00        
+1BB1  00        
+1BB2  01 B8 98  
+1BB5  A0        
+1BB6  1B        
+1BB7  10        
+1BB8  FF        
+1BB9  00        
+1BBA  A0        
+1BBB  1B        
+1BBC  00        
+1BBD  00        
+1BBE  00        
+1BBF  00        
+1BC0  00        
+1BC1  10        
+1BC2  00        
+1BC3  0E 05     
+1BC5  00        
+1BC6  00        
+1BC7  00        
+1BC8  00        
+1BC9  00        
+1BCA  07        
+1BCB  D0        
+1BCC  1C        
+1BCD  C8        
+1BCE  9B        
+1BCF  03        
+1BD0  00        
+1BD1  00        
+1BD2  03        
+1BD3  04        
+1BD4  78        
+1BD5  14        
+1BD6  0B        
+1BD7  19        
+1BD8  3A 6D FA  
+1BDB  FA 6D 3A  
+1BDE  19        
+1BDF  00        
+1BE0  00        
+1BE1  00        
+1BE2  00        
+1BE3  00        
+1BE4  00        
+1BE5  00        
+1BE6  00        
+1BE7  00        
+1BE8  00        
+1BE9  01 00 00  
+1BEC  01 74 1F  
+1BEF  00        
+1BF0  80        
+1BF1  00        
+1BF2  00        
+1BF3  00        
+1BF4  00        
+1BF5  00        
+1BF6  1C        
+1BF7  2F        
+1BF8  00        
+1BF9  00        
+1BFA  1C        
+1BFB  27        
+1BFC  00        
+1BFD  00        
+1BFE  1C        
+1BFF  39        
+1C00  00        
+1C01  00        
+1C02  39        
+1C03  79        
+1C04  7A        
+1C05  6E        
+1C06  EC FA FA  
+1C09  EC 6E 7A  
+1C0C  79        
+1C0D  39        
+1C0E  00        
+1C0F  00        
+1C10  00        
+1C11  00        
+1C12  00        
+1C13  78        
+1C14  1D        
+1C15  BE        
+1C16  6C        
+1C17  3C        
+1C18  3C        
+1C19  3C        
+1C1A  6C        
+1C1B  BE        
+1C1C  1D        
+1C1D  78        
+1C1E  00        
+1C1F  00        
+1C20  00        
+1C21  00        
+1C22  00        
+1C23  00        
+1C24  19        
+1C25  3A 6D FA  
+1C28  FA 6D 3A  
+1C2B  19        
+1C2C  00        
+1C2D  00        
+1C2E  00        
+1C2F  00        
+1C30  00        
+1C31  00        
+1C32  38        
+1C33  7A        
+1C34  7F        
+1C35  6D        
+1C36  EC FA FA  
+1C39  EC 6D 7F  
+1C3C  7A        
+1C3D  38        
+1C3E  00        
+1C3F  00        
+1C40  00        
+1C41  00        
+1C42  00        
+1C43  0E 18     
+1C45  BE        
+1C46  6D        
+1C47  3D        
+1C48  3C        
+1C49  3D        
+1C4A  6D        
+1C4B  BE        
+1C4C  18        
+1C4D  0E 00     
+1C4F  00        
+1C50  00        
+1C51  00        
+1C52  00        
+1C53  00        
+1C54  1A        
+1C55  3D        
+1C56  68        
+1C57  FC FC 68  
+1C5A  3D        
+1C5B  1A        
+1C5C  00        
+1C5D  00        
+1C5E  00        
+1C5F  00        
+1C60  00        
+1C61  00        
+1C62  0F        
+1C63  1F        
+1C64  1F        
+1C65  1F        
+1C66  1F        
+1C67  7F        
+1C68  FF        
+1C69  7F        
+1C6A  1F        
+1C6B  1F        
+1C6C  1F        
+1C6D  1F        
+1C6E  0F        
+1C6F  00        
+1C70  00        
+1C71  04        
+1C72  01 13 03  
+1C75  07        
+1C76  B3        
+1C77  0F        
+1C78  2F        
+1C79  03        
+1C7A  2F        
+1C7B  49        
+1C7C  04        
+1C7D  03        
+1C7E  00        
+1C7F  01 40 08  
+1C82  05        
+1C83  A3        
+1C84  0A        
+1C85  03        
+1C86  5B        
+1C87  0F        
+1C88  27        
+1C89  27        
+1C8A  0B        
+1C8B  4B        
+1C8C  40        
+1C8D  84        
+1C8E  11 48 0F  
+1C91  99        
+1C92  3C        
+1C93  7E        
+1C94  3D        
+1C95  BC        
+1C96  3E 7C     
+1C98  99        
+1C99  27        
+1C9A  1B        
+1C9B  1A        
+1C9C  26 0F     
+1C9E  0E 08     
+1CA0  0D        
+1CA1  13        
+1CA2  12        
+1CA3  28        
+1CA4  12        
+1CA5  02        
+1CA6  0E 11     
+1CA8  04        
+1CA9  26 00     
+1CAB  03        
+1CAC  15        
+1CAD  00        
+1CAE  0D        
+1CAF  02        
+1CB0  04        
+1CB1  26 13     
+1CB3  00        
+1CB4  01 0B 04  
+1CB7  28        
+1CB8  02        
+1CB9  10        
+1CBA  20        
+1CBB  30        
+1CBC  13        
+1CBD  08        
+1CBE  0B        
+1CBF  13        
+1CC0  00        
+1CC1  08        
+1CC2  49        
+1CC3  22 14 81  
+1CC6  42        
+1CC7  00        
+1CC8  42        
+1CC9  81        
+1CCA  14        
+1CCB  22 49 08  
+1CCE  00        
+1CCF  00        
+1CD0  44        
+1CD1  AA        
+1CD2  10        
+1CD3  88        
+1CD4  54        
+1CD5  22 10 AA  
+1CD8  44        
+1CD9  22 54 88  
+1CDC  4A        
+1CDD  15        
+1CDE  BE        
+1CDF  3F        
+1CE0  5E        
+1CE1  25        
+1CE2  04        
+1CE3  FC 04 10  
+1CE6  FC 10 20  
+1CE9  FC 20 80  
+1CEC  FC 80 00  
+1CEF  FE 00     
+1CF1  24        
+1CF2  FE 12     
+1CF4  00        
+1CF5  FE 00     
+1CF7  48        
+1CF8  FE 90     
+1CFA  0F        
+1CFB  0B        
+1CFC  00        
+1CFD  29        
+1CFE  00        
+1CFF  00        
+1D00  01 07 01  
+1D03  01 01 04  
+1D06  0B        
+1D07  01 06 03  
+1D0A  01 01 0B  
+1D0D  09        
+1D0E  02        
+1D0F  08        
+1D10  02        
+1D11  0B        
+1D12  04        
+1D13  07        
+1D14  0A        
+1D15  05        
+1D16  02        
+1D17  05        
+1D18  04        
+1D19  06 07     
+1D1B  08        
+1D1C  0A        
+1D1D  06 0A     
+1D1F  03        
+1D20  FF        
+1D21  0F        
+1D22  FF        
+1D23  1F        
+1D24  FF        
+1D25  3F        
+1D26  FF        
+1D27  7F        
+1D28  FF        
+1D29  FF        
+1D2A  FC FF F8  
+1D2D  FF        
+1D2E  F0        
+1D2F  FF        
+1D30  F0        
+1D31  FF        
+1D32  F0        
+1D33  FF        
+1D34  F0        
+1D35  FF        
+1D36  F0        
+1D37  FF        
+1D38  F0        
+1D39  FF        
+1D3A  F0        
+1D3B  FF        
+1D3C  F8        
+1D3D  FF        
+1D3E  FC FF FF  
+1D41  FF        
+1D42  FF        
+1D43  FF        
+1D44  FF        
+1D45  7F        
+1D46  FF        
+1D47  3F        
+1D48  FF        
+1D49  1F        
+1D4A  FF        
+1D4B  0F        
+1D4C  05        
+1D4D  10        
+1D4E  15        
+1D4F  30        
+1D50  94        
+1D51  97        
+1D52  9A        
+1D53  9D        
+1D54  10        
+1D55  05        
+1D56  05        
+1D57  10        
+1D58  15        
+1D59  10        
+1D5A  10        
+1D5B  05        
+1D5C  30        
+1D5D  10        
+1D5E  10        
+1D5F  10        
+1D60  05        
+1D61  15        
+1D62  10        
+1D63  05        
+1D64  00        
+1D65  00        
+1D66  00        
+1D67  00        
+1D68  04        
+1D69  0C        
+1D6A  1E 37     
+1D6C  3E 7C     
+1D6E  74        
+1D6F  7E        
+1D70  7E        
+1D71  74        
+1D72  7C        
+1D73  3E 37     
+1D75  1E 0C     
+1D77  04        
+1D78  00        
+1D79  00        
+1D7A  00        
+1D7B  00        
+1D7C  00        
+1D7D  22 00 A5  
+1D80  40        
+1D81  08        
+1D82  98        
+1D83  3D        
+1D84  B6        
+1D85  3C        
+1D86  36 1D     
+1D88  10        
+1D89  48        
+1D8A  62        
+1D8B  B6        
+1D8C  1D        
+1D8D  98        
+1D8E  08        
+1D8F  42        
+1D90  90        
+1D91  08        
+1D92  00        
+1D93  00        
+1D94  26 1F     
+1D96  1A        
+1D97  1B        
+1D98  1A        
+1D99  1A        
+1D9A  1B        
+1D9B  1F        
+1D9C  1A        
+1D9D  1D        
+1D9E  1A        
+1D9F  1A        
+1DA0  10        
+1DA1  20        
+1DA2  30        
+1DA3  60        
+1DA4  50        
+1DA5  48        
+1DA6  48        
+1DA7  48        
+1DA8  40        
+1DA9  40        
+1DAA  40        
+1DAB  0F        
+1DAC  0B        
+1DAD  00        
+1DAE  18        
+1DAF  12        
+1DB0  0F        
+1DB1  00        
+1DB2  02        
+1DB3  04        
+1DB4  26 26     
+1DB6  08        
+1DB7  0D        
+1DB8  15        
+1DB9  00        
+1DBA  03        
+1DBB  04        
+1DBC  11 12 0E  
+1DBF  2C        
+1DC0  68        
+1DC1  1D        
+1DC2  0C        
+1DC3  2C        
+1DC4  20        
+1DC5  1C        
+1DC6  0A        
+1DC7  2C        
+1DC8  40        
+1DC9  1C        
+1DCA  08        
+1DCB  2C        
+1DCC  00        
+1DCD  1C        
+1DCE  FF        
+1DCF  0E 2E     
+1DD1  E0        
+1DD2  1D        
+1DD3  0C        
+1DD4  2E EA     
+1DD6  1D        
+1DD7  0A        
+1DD8  2E F4     
+1DDA  1D        
+1DDB  08        
+1DDC  2E 99     
+1DDE  1C        
+1DDF  FF        
+1DE0  27        
+1DE1  38        
+1DE2  26 0C     
+1DE4  18        
+1DE5  12        
+1DE6  13        
+1DE7  04        
+1DE8  11 18 27  
+1DEB  1D        
+1DEC  1A        
+1DED  26 0F     
+1DEF  0E 08     
+1DF1  0D        
+1DF2  13        
+1DF3  12        
+1DF4  27        
+1DF5  1C        
+1DF6  1A        
+1DF7  26 0F     
+1DF9  0E 08     
+1DFB  0D        
+1DFC  13        
+1DFD  12        
+1DFE  00        
+1DFF  00        
+1E00  00        
+1E01  1F        
+1E02  24        
+1E03  44        
+1E04  24        
+1E05  1F        
+1E06  00        
+1E07  00        
+1E08  00        
+1E09  7F        
+1E0A  49        
+1E0B  49        
+1E0C  49        
+1E0D  36 00     
+1E0F  00        
+1E10  00        
+1E11  3E 41     
+1E13  41        
+1E14  41        
+1E15  22 00 00  
+1E18  00        
+1E19  7F        
+1E1A  41        
+1E1B  41        
+1E1C  41        
+1E1D  3E 00     
+1E1F  00        
+1E20  00        
+1E21  7F        
+1E22  49        
+1E23  49        
+1E24  49        
+1E25  41        
+1E26  00        
+1E27  00        
+1E28  00        
+1E29  7F        
+1E2A  48        
+1E2B  48        
+1E2C  48        
+1E2D  40        
+1E2E  00        
+1E2F  00        
+1E30  00        
+1E31  3E 41     
+1E33  41        
+1E34  45        
+1E35  47        
+1E36  00        
+1E37  00        
+1E38  00        
+1E39  7F        
+1E3A  08        
+1E3B  08        
+1E3C  08        
+1E3D  7F        
+1E3E  00        
+1E3F  00        
+1E40  00        
+1E41  00        
+1E42  41        
+1E43  7F        
+1E44  41        
+1E45  00        
+1E46  00        
+1E47  00        
+1E48  00        
+1E49  02        
+1E4A  01 01 01  
+1E4D  7E        
+1E4E  00        
+1E4F  00        
+1E50  00        
+1E51  7F        
+1E52  08        
+1E53  14        
+1E54  22 41 00  
+1E57  00        
+1E58  00        
+1E59  7F        
+1E5A  01 01 01  
+1E5D  01 00 00  
+1E60  00        
+1E61  7F        
+1E62  20        
+1E63  18        
+1E64  20        
+1E65  7F        
+1E66  00        
+1E67  00        
+1E68  00        
+1E69  7F        
+1E6A  10        
+1E6B  08        
+1E6C  04        
+1E6D  7F        
+1E6E  00        
+1E6F  00        
+1E70  00        
+1E71  3E 41     
+1E73  41        
+1E74  41        
+1E75  3E 00     
+1E77  00        
+1E78  00        
+1E79  7F        
+1E7A  48        
+1E7B  48        
+1E7C  48        
+1E7D  30        
+1E7E  00        
+1E7F  00        
+1E80  00        
+1E81  3E 41     
+1E83  45        
+1E84  42        
+1E85  3D        
+1E86  00        
+1E87  00        
+1E88  00        
+1E89  7F        
+1E8A  48        
+1E8B  4C        
+1E8C  4A        
+1E8D  31 00 00  
+1E90  00        
+1E91  32 49 49  
+1E94  49        
+1E95  26 00     
+1E97  00        
+1E98  00        
+1E99  40        
+1E9A  40        
+1E9B  7F        
+1E9C  40        
+1E9D  40        
+1E9E  00        
+1E9F  00        
+1EA0  00        
+1EA1  7E        
+1EA2  01 01 01  
+1EA5  7E        
+1EA6  00        
+1EA7  00        
+1EA8  00        
+1EA9  7C        
+1EAA  02        
+1EAB  01 02 7C  
+1EAE  00        
+1EAF  00        
+1EB0  00        
+1EB1  7F        
+1EB2  02        
+1EB3  0C        
+1EB4  02        
+1EB5  7F        
+1EB6  00        
+1EB7  00        
+1EB8  00        
+1EB9  63        
+1EBA  14        
+1EBB  08        
+1EBC  14        
+1EBD  63        
+1EBE  00        
+1EBF  00        
+1EC0  00        
+1EC1  60        
+1EC2  10        
+1EC3  0F        
+1EC4  10        
+1EC5  60        
+1EC6  00        
+1EC7  00        
+1EC8  00        
+1EC9  43        
+1ECA  45        
+1ECB  49        
+1ECC  51        
+1ECD  61        
+1ECE  00        
+1ECF  00        
+1ED0  00        
+1ED1  3E 45     
+1ED3  49        
+1ED4  51        
+1ED5  3E 00     
+1ED7  00        
+1ED8  00        
+1ED9  00        
+1EDA  21 7F 01  
+1EDD  00        
+1EDE  00        
+1EDF  00        
+1EE0  00        
+1EE1  23        
+1EE2  45        
+1EE3  49        
+1EE4  49        
+1EE5  31 00 00  
+1EE8  00        
+1EE9  42        
+1EEA  41        
+1EEB  49        
+1EEC  59        
+1EED  66        
+1EEE  00        
+1EEF  00        
+1EF0  00        
+1EF1  0C        
+1EF2  14        
+1EF3  24        
+1EF4  7F        
+1EF5  04        
+1EF6  00        
+1EF7  00        
+1EF8  00        
+1EF9  72        
+1EFA  51        
+1EFB  51        
+1EFC  51        
+1EFD  4E        
+1EFE  00        
+1EFF  00        
+1F00  00        
+1F01  1E 29     
+1F03  49        
+1F04  49        
+1F05  46        
+1F06  00        
+1F07  00        
+1F08  00        
+1F09  40        
+1F0A  47        
+1F0B  48        
+1F0C  50        
+1F0D  60        
+1F0E  00        
+1F0F  00        
+1F10  00        
+1F11  36 49     
+1F13  49        
+1F14  49        
+1F15  36 00     
+1F17  00        
+1F18  00        
+1F19  31 49 49  
+1F1C  4A        
+1F1D  3C        
+1F1E  00        
+1F1F  00        
+1F20  00        
+1F21  08        
+1F22  14        
+1F23  22 41 00  
+1F26  00        
+1F27  00        
+1F28  00        
+1F29  00        
+1F2A  41        
+1F2B  22 14 08  
+1F2E  00        
+1F2F  00        
+1F30  00        
+1F31  00        
+1F32  00        
+1F33  00        
+1F34  00        
+1F35  00        
+1F36  00        
+1F37  00        
+1F38  00        
+1F39  14        
+1F3A  14        
+1F3B  14        
+1F3C  14        
+1F3D  14        
+1F3E  00        
+1F3F  00        
+1F40  00        
+1F41  22 14 7F  
+1F44  14        
+1F45  22 00 00  
+1F48  00        
+1F49  03        
+1F4A  04        
+1F4B  78        
+1F4C  04        
+1F4D  03        
+1F4E  00        
+1F4F  00        
+1F50  24        
+1F51  1B        
+1F52  26 0E     
+1F54  11 26 1C  
+1F57  26 0F     
+1F59  0B        
+1F5A  00        
+1F5B  18        
+1F5C  04        
+1F5D  11 12 25  
+1F60  26 26     
+1F62  28        
+1F63  1B        
+1F64  26 0F     
+1F66  0B        
+1F67  00        
+1F68  18        
+1F69  04        
+1F6A  11 26 26  
+1F6D  1B        
+1F6E  26 02     
+1F70  0E 08     
+1F72  0D        
+1F73  26 01     
+1F75  01 00 00  
+1F78  01 00 02  
+1F7B  01 00 02  
+1F7E  01 00 60  
+1F81  10        
+1F82  0F        
+1F83  10        
+1F84  60        
+1F85  30        
+1F86  18        
+1F87  1A        
+1F88  3D        
+1F89  68        
+1F8A  FC FC 68  
+1F8D  3D        
+1F8E  1A        
+1F8F  00        
+1F90  08        
+1F91  0D        
+1F92  12        
+1F93  04        
+1F94  11 13 26  
+1F97  26 02     
+1F99  0E 08     
+1F9B  0D        
+1F9C  0D        
+1F9D  2A 50 1F  
+1FA0  0A        
+1FA1  2A 62 1F  
+1FA4  07        
+1FA5  2A E1 1F  
+1FA8  FF        
+1FA9  02        
+1FAA  11 04 03  
+1FAD  08        
+1FAE  13        
+1FAF  26 00     
+1FB1  60        
+1FB2  10        
+1FB3  0F        
+1FB4  10        
+1FB5  60        
+1FB6  38        
+1FB7  19        
+1FB8  3A 6D FA  
+1FBB  FA 6D 3A  
+1FBE  19        
+1FBF  00        
+1FC0  00        
+1FC1  20        
+1FC2  40        
+1FC3  4D        
+1FC4  50        
+1FC5  20        
+1FC6  00        
+1FC7  00        
+1FC8  00        
+1FC9  00        
+1FCA  00        
+1FCB  FF        
+1FCC  B8        
+1FCD  FF        
+1FCE  80        
+1FCF  1F        
+1FD0  10        
+1FD1  97        
+1FD2  00        
+1FD3  80        
+1FD4  1F        
+1FD5  00        
+1FD6  00        
+1FD7  01 D0 22  
+1FDA  20        
+1FDB  1C        
+1FDC  10        
+1FDD  94        
+1FDE  00        
+1FDF  20        
+1FE0  1C        
+1FE1  28        
+1FE2  1C        
+1FE3  26 0F     
+1FE5  0B        
+1FE6  00        
+1FE7  18        
+1FE8  04        
+1FE9  11 12 26  
+1FEC  1C        
+1FED  26 02     
+1FEF  0E 08     
+1FF1  0D        
+1FF2  12        
+1FF3  0F        
+1FF4  14        
+1FF5  12        
+1FF6  07        
+1FF7  26 00     
+1FF9  08        
+1FFA  08        
+1FFB  08        
+1FFC  08        
+1FFD  08        
+1FFE  00        
+1FFF  00        
+2000            

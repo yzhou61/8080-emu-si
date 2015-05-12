@@ -27,7 +27,7 @@
 #define BYTES_PER_SCANLINE (DISPLAY_HEIGHT / 8)
 #define CYCLES_BEFORE_VBLANK (28527)
 #define CYCLES_AFTER_VBLANK (4839)
-#define NS_PER_FRAME (16683350 * 3)
+#define NS_PER_FRAME (16683350 * 1)
 
 struct options_t {
     const char *bin_name;
@@ -106,13 +106,21 @@ static void display_loop()
 
     then = get_ns();
 
-    execute(machine, CYCLES_BEFORE_VBLANK);
+    if (execute(machine, CYCLES_BEFORE_VBLANK) == -1) {
+        draw();
+        sleep(2);
+        exit(0);
+    }
 
     generate_intr(machine, 1);
 
     draw();
 
-    execute(machine, CYCLES_AFTER_VBLANK);
+    if (execute(machine, CYCLES_AFTER_VBLANK) == -1) {
+        draw();
+        sleep(2);
+        exit(0);
+    }
 
     generate_intr(machine, 2);
 

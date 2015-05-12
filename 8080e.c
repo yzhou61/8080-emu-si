@@ -85,17 +85,19 @@ static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, 
                             { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
                             { 111, 10, 10, 4, 117, 11, 7, 11, 111, 5, 10, 4, 117, 17, 7, 11, }, };
 
+#define INTEREST (0x20C1)
+
 static void print_stack(struct state_t *state)
 {
     int i;
     static unsigned char m;
 
-    unsigned char n = MEM_LOC(0x2015);
+    unsigned char n = MEM_LOC(INTEREST);
 
     if (n != m) {
     TRACE("\t\t\t\t");
 
-    TRACE("CHANGED: 0x%02x", MEM_LOC(0x2015));
+    TRACE("CHANGED: 0x%02x -> 0x%02x", m, MEM_LOC(INTEREST));
     m = n;
 
     /*
@@ -174,7 +176,7 @@ struct cpu_mem_t *init_machine(const char *bin_name, struct keyboard_t *k)
     state->h = ((unsigned char *)&(state->hl)) + 1;
     state->l = (unsigned char *)&(state->hl);
     posix_memalign((void **)&(state->mem), 0x1000, MEM_SIZE + MIRROR_SIZE);
-    memset(state->mem, 0xdd, MEM_SIZE + MIRROR_SIZE);
+    memset(state->mem, 0x00, MEM_SIZE + MIRROR_SIZE);
 
     state->program = state->mem;
     state->program_size = init_program(bin_name, state->mem);
@@ -1173,12 +1175,22 @@ void generate_intr(struct cpu_mem_t *machine, int intr_num)
     state->pc = 0x08 * intr_num;
 }
 
-void execute(struct cpu_mem_t *machine, int cycles)
+int execute(struct cpu_mem_t *machine, int cycles)
 {
     int cycle = 0;
     struct state_t *state = (struct state_t *)machine->state;
 
     while (cycle < cycles) {
+        if (state->pc == 0x08fb) {
+            static count = 0;
+            ++count;
+            if (count == 5) {
+                return -1;
+            }
+        }
+
         cycle += execute_one(state);
     }
+
+    return 0;
 }

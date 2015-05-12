@@ -21,4 +21,4 @@ void deinit_machine(struct cpu_mem_t *machine);
 
 void generate_intr(struct cpu_mem_t *machine, int intr_num);
 
-void execute(struct cpu_mem_t *machine, int cycles);
+int execute(struct cpu_mem_t *machine, int cycles);
