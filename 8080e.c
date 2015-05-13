@@ -67,6 +67,7 @@ static struct keyboard_t *keyboard;
 static int stop = 20;
 static unsigned long long count = 0;
 static unsigned long long total_cycles = 0;
+static int stop_count = 0;
 
 static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
                             { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
@@ -85,7 +86,7 @@ static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, 
                             { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
                             { 111, 10, 10, 4, 117, 11, 7, 11, 111, 5, 10, 4, 117, 17, 7, 11, }, };
 
-#define INTEREST (0x20C1)
+#define INTEREST (0x201D)
 
 static void print_stack(struct state_t *state)
 {
@@ -95,10 +96,12 @@ static void print_stack(struct state_t *state)
     unsigned char n = MEM_LOC(INTEREST);
 
     if (n != m) {
-    TRACE("\t\t\t\t");
+        TRACE("\t\t\t\t");
 
-    TRACE("CHANGED: 0x%02x -> 0x%02x", m, MEM_LOC(INTEREST));
-    m = n;
+        TRACE("CHANGED: 0x%02x -> 0x%02x", m, MEM_LOC(INTEREST));
+        m = n;
+
+        //++stop_count;
 
     /*
     for (i = STACK_BOTTOM; i >= state->sp; --i) {
@@ -106,7 +109,7 @@ static void print_stack(struct state_t *state)
     }
     */
 
-    TRACE("\n");
+        TRACE("\n");
     }
 }
 
@@ -706,7 +709,7 @@ static void IN(struct state_t *state)
             state->a = 0x0D;
             break;
         case 1:
-            state->a = (keyboard->p1_start << 2) | (keyboard->coin) | 0x08;
+            state->a = (keyboard->p1_shoot << 4) | (keyboard->p1_start << 2) | (keyboard->p2_start << 1) | (keyboard->coin) | 0x08;
             break;
         case 3:
             state->a = ((state->shift_reg >> (8 - state->shift_reg_offset)) & 0xFF);
@@ -1181,12 +1184,12 @@ int execute(struct cpu_mem_t *machine, int cycles)
     struct state_t *state = (struct state_t *)machine->state;
 
     while (cycle < cycles) {
-        if (state->pc == 0x08fb) {
-            static count = 0;
-            ++count;
-            if (count == 5) {
-                return -1;
-            }
+        if (state->pc == 0x0b93) {
+            ++stop_count;
+        }
+
+        if (stop_count == 1) {
+            return -1;
         }
 
         cycle += execute_one(state);

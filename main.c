@@ -27,7 +27,7 @@
 #define BYTES_PER_SCANLINE (DISPLAY_HEIGHT / 8)
 #define CYCLES_BEFORE_VBLANK (28527)
 #define CYCLES_AFTER_VBLANK (4839)
-#define NS_PER_FRAME (16683350 * 1)
+#define NS_PER_FRAME (1668335 * 1)
 
 struct options_t {
     const char *bin_name;
@@ -141,12 +141,20 @@ static unsigned char *get_key(unsigned char encoding)
             return &(keyboard.p1_left);
         case 'c':
             return &(keyboard.coin);
-        case 0x64:
+        case 'd':
             return &(keyboard.p1_right);
-        case 0x73:
+        case 's':
             return &(keyboard.p1_shoot);
-        case 0x77:
+        case 'w':
             return &(keyboard.p1_start);
+        case 'j':
+            return &(keyboard.p2_left);
+        case 'l':
+            return &(keyboard.p2_right);
+        case 'k':
+            return &(keyboard.p2_shoot);
+        case 'i':
+            return &(keyboard.p2_start);
         default:
             break;
     }

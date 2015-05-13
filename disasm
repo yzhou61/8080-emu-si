@@ -23,48 +23,49 @@
 0013  E5        push    h
 0014  3E 80     mvi     a,$80
 0016  32 72 20  sta     $2072
-0019  21 C0 20  lxi     h,$20C0             // Increment delay
+0019  21 C0 20  lxi     h,$20C0         // Increment delay
 001C  35        dcr     m
-001D  CD CD 17  call    $17CD
+001D  CD CD 17  call    $17CD           // TODO maybe for tilt?
 0020  DB 01     in      $01
 0022  0F        rrc
-0023  DA 67 00  jc      $0067               // If "coin"
+0023  DA 67 00  jc      $0067           // If "coin"
 0026  3A EA 20  lda     $20EA
 0029  A7        ana     a
 002A  CA 42 00  jz      $0042
-002D  3A EB 20  lda     $20EB               // Number of coins (99 max)
+002D  3A EB 20  lda     $20EB           // Number of coins (99 max)
 0030  FE 99     cpi     $99
 0032  CA 3E 00  jz      $003E
 0035  C6 01     adi     $01
 0037  27        daa
 0038  32 EB 20  sta     $20EB
-003B  CD 47 19  call    $1947               // Draw coin
+003B  CD 47 19  call    $1947           // Draw coin from (20EB)
 003E  AF        xra     a
-003F  32 EA 20  sta     $20EA               // Return from coin (clear 20EA)
+003F  32 EA 20  sta     $20EA           // Return from coin (clear 20EA)
 0042  3A E9 20  lda     $20E9
 0045  A7        ana     a
 0046  CA 82 00  jz      $0082
-0049  3A EF 20  lda     $20EF
+0049  3A EF 20  lda     $20EF           // TODO I'm playing now
 004C  A7        ana     a
-004D  C2 6F 00  jnz     $006F
-0050  3A EB 20  lda     $20EB               // Check number of coins
+004D  C2 6F 00  jnz     $006F           // TODO Start drawing one unit
+0050  3A EB 20  lda     $20EB           // Check number of coins
 0053  A7        ana     a
-0054  C2 5D 00  jnz     $005D               // Jump to game
-0057  CD BF 0A  call    $0ABF
+0054  C2 5D 00  jnz     $005D           // Jump to game
+0057  CD BF 0A  call    $0ABF           // TODO Check 20C1 state
 005A  C3 82 00  jmp     $0082
 
 005D  3A 93 20  lda     $2093
 0060  A7        ana     a
 0061  C2 82 00  jnz     $0082
-0064  C3 65 07  jmp     $0765               // Jump to actual game
+0064  C3 65 07  jmp     $0765           // Jump to actual game
 
 // Coin
 0067  3E 01     mvi     a,$01
 0069  32 EA 20  sta     $20EA
 006C  C3 3F 00  jmp     $003F
 
-// Start drawing one unit
-006F  CD 40 17  call    $1740
+// TODO Start drawing one unit
+006F  CD 40 17  call    $1740           // TODO Draw player??
+// TODO Start drawing one unit
 0072  3A 32 20  lda     $2032
 0075  32 80 20  sta     $2080
 0078  CD 00 01  call    $0100
@@ -86,11 +87,11 @@
 008B  00        nop
 
 008C  AF        xra     a
-008D  32 72 20  sta     $2072 // 0 -> (2072)
+008D  32 72 20  sta     $2072           // 0 -> (2072)
 0090  3A E9 20  lda     $20E9
 0093  A7        ana     a
-0094  CA 82 00  jz      $0082 // if (a == 0) return;
-0097  3A EF 20  lda     $20EF
+0094  CA 82 00  jz      $0082           // if (a == 0) return;
+0097  3A EF 20  lda     $20EF           // TODO I'm playing now
 009A  A7        ana     a
 009B  C2 A5 00  jnz     $00A5
 009E  3A C1 20  lda     $20C1
@@ -101,7 +102,7 @@
 00AB  CD 41 01  call    $0141
 00AE  C3 82 00  jmp     $0082
 
-00B1  CD 86 08  call    $0886
+00B1  CD 86 08  call    $0886           // let HL be (2067)FC
 00B4  E5        push    h
 00B5  7E        mov     a,m
 00B6  23        inx     h
@@ -123,10 +124,11 @@
 00D3  32 0D 20  sta     $200D
 00D6  C9        ret
 
+// set (player)FB to 2 (both), clear score number if single player
 00D7  3E 02     mvi     a,$02
 00D9  32 FB 21  sta     $21FB
 00DC  32 FB 22  sta     $22FB
-00DF  C3 E4 08  jmp     $08E4
+00DF  C3 E4 08  jmp     $08E4           // Clear the score number if single player
 
 00E2  00        nop
 00E3  00        nop
@@ -159,7 +161,7 @@
 00FE  00        nop
 00FF  00        nop
 
-// Draw enemy all types
+// Draw enemy all types and ret
 0100  21 02 20  lxi     h,$2002
 0103  7E        mov     a,m
 0104  A7        ana     a
@@ -167,7 +169,7 @@
 0108  E5        push    h
 0109  3A 06 20  lda     $2006
 010C  6F        mov     l,a
-010D  3A 67 20  lda     $2067
+010D  3A 67 20  lda     $2067           // player indicator (21/22)
 0110  67        mov     h,a
 0111  7E        mov     a,m
 0112  A7        ana     a
@@ -192,7 +194,7 @@
 012B  C4 3B 01  cnz     $013B
 012E  2A 0B 20  lhld    $200B
 0131  06 10     mvi     b,$10
-0133  CD D3 15  call    $15D3
+0133  CD D3 15  call    $15D3           // Draw one enemy (all types) (both)
 0136  AF        xra     a
 0137  32 00 20  sta     $2000
 013A  C9        ret
@@ -208,7 +210,7 @@
 0146  3A 00 20  lda     $2000
 0149  A7        ana     a
 014A  C0        rnz
-014B  3A 67 20  lda     $2067
+014B  3A 67 20  lda     $2067           // player indicator (21/22)
 014E  67        mov     h,a
 014F  3A 06 20  lda     $2006
 0152  16 02     mvi     d,$02
@@ -274,7 +276,7 @@
 01B6  E6 01     ani     $01
 01B8  77        mov     m,a
 01B9  AF        xra     a
-01BA  21 67 20  lxi     h,$2067
+01BA  21 67 20  lxi     h,$2067             // player indicator (21/22)
 01BD  66        mov     h,m
 01BE  C9        ret
 
@@ -294,7 +296,7 @@
 01CF  3E 01     mvi     a,$01
 01D1  06 E0     mvi     b,$E0
 01D3  21 02 24  lxi     h,$2402
-01D6  C3 CC 14  jmp     $14CC
+01D6  C3 CC 14  jmp     $14CC           // set 8*b box to a
 
 01D9  23        inx     h
 01DA  46        mov     b,m
@@ -312,7 +314,7 @@
 01E4  06 C0     mvi     b,$C0
 01E6  11 00 1B  lxi     d,$1B00
 01E9  21 00 20  lxi     h,$2000
-01EC  C3 32 1A  jmp     $1A32
+01EC  C3 32 1A  jmp     $1A32           // copy (de) to (hl), size b
 
 // Set 2142 to 1D20, size 2C * 4
 01EF  21 42 21  lxi     h,$2142
@@ -324,7 +326,7 @@
 01FA  11 20 1D  lxi     d,$1D20
 01FD  D5        push    d
 01FE  06 2C     mvi     b,$2C
-0200  CD 32 1A  call    $1A32
+0200  CD 32 1A  call    $1A32           // copy (de) to (hl), size b
 0203  D1        pop     d
 0204  0D        dcr     c
 0205  C2 FD 01  jnz     $01FD
@@ -340,7 +342,6 @@
 0214  11 42 22  lxi     d,$2242
 0217  C3 1E 02  jmp     $021E
 
-// Draw 4 "bunckers"
 021A  AF        xra     a
 021B  11 42 21  lxi     d,$2142
 021E  32 81 20  sta     $2081
@@ -352,7 +353,7 @@
 022B  3A 81 20  lda     $2081
 022E  A7        ana     a
 022F  C2 42 02  jnz     $0242
-0232  CD 69 1A  call    $1A69
+0232  CD 69 1A  call    $1A69           // Draw buncker
 0235  C1        pop     b
 0236  F1        pop     psw
 0237  3D        dcr     a
@@ -441,34 +442,34 @@
 02B6  21 10 20  lxi     h,$2010
 02B9  11 10 1B  lxi     d,$1B10
 02BC  06 10     mvi     b,$10
-02BE  CD 32 1A  call    $1A32
+02BE  CD 32 1A  call    $1A32           // copy (de) to (hl), size b
 02C1  06 00     mvi     b,$00
-02C3  CD DC 19  call    $19DC
+02C3  CD DC 19  call    $19DC           // (2094) AND b and then OUT 3
 02C6  3A 6D 20  lda     $206D
 02C9  A7        ana     a
 02CA  C0        rnz
-02CB  3A EF 20  lda     $20EF
+02CB  3A EF 20  lda     $20EF           // TODO I'm playing now
 02CE  A7        ana     a
 02CF  C8        rz
 02D0  31 00 24  lxi     sp,$2400
 02D3  FB        ei
-02D4  CD D7 19  call    $19D7
-02D7  CD 2E 09  call    $092E
+02D4  CD D7 19  call    $19D7           // clear (20E9)
+02D7  CD 2E 09  call    $092E           // load (player)FF to HL
 02DA  A7        ana     a
 02DB  CA 6D 16  jz      $166D
-02DE  CD E7 18  call    $18E7
+02DE  CD E7 18  call    $18E7           // if (lsb(2067) == 1) h = 20E8; else h = 20E7;
 02E1  7E        mov     a,m
 02E2  A7        ana     a
 02E3  CA 2C 03  jz      $032C
-02E6  3A CE 20  lda     $20CE
+02E6  3A CE 20  lda     $20CE           // 2 players variable
 02E9  A7        ana     a
 02EA  CA 2C 03  jz      $032C
-02ED  3A 67 20  lda     $2067
+02ED  3A 67 20  lda     $2067           // player indicator (21/22)
 02F0  F5        push    psw
 02F1  0F        rrc
 02F2  DA 32 03  jc      $0332
 02F5  CD 0E 02  call    $020E
-02F8  CD 78 08  call    $0878
+02F8  CD 78 08  call    $0878           // (2008) -> a; (2009:2) -> DE; (2067)FC -> HL
 02FB  73        mov     m,e
 02FC  23        inx     h
 02FD  72        mov     m,d
@@ -484,7 +485,7 @@
 030B  D2 12 03  jnc     $0312
 030E  06 20     mvi     b,$20
 0310  3E 22     mvi     a,$22
-0312  32 67 20  sta     $2067
+0312  32 67 20  sta     $2067           // player indicator (21/22)
 0315  CD B6 0A  call    $0AB6           // Delay for $80
 0318  AF        xra     a
 0319  32 11 20  sta     $2011
@@ -492,11 +493,11 @@
 031D  D3 05     out     $05
 031F  3C        inr     a
 0320  32 98 20  sta     $2098
-0323  CD D6 09  call    $09D6           // Clear mid screen
-0326  CD 7F 1A  call    $1A7F           // Draw "lives"
+0323  CD D6 09  call    $09D6           // Clear the middle of the screen
+0326  CD 7F 1A  call    $1A7F           // Draw "lives" indicators and number ((2067) is 21/22)
 0329  C3 F9 07  jmp     $07F9
 
-032C  CD 7F 1A  call    $1A7F           // Draw "lives"
+032C  CD 7F 1A  call    $1A7F           // Draw "lives" indicators and number ((2067) is 21/22)
 032F  C3 17 08  jmp     $0817
 
 0332  CD 09 02  call    $0209
@@ -515,44 +516,46 @@
 0346  00        nop
 0347  2B        dcx     h
 0348  36 01     mvi     m,$01
-034A  3A 1B 20  lda     $201B
+034A  3A 1B 20  lda     $201B           // TODO player location horizontal
 034D  47        mov     b,a
-034E  3A EF 20  lda     $20EF
+034E  3A EF 20  lda     $20EF           // TODO I'm playing now
 0351  A7        ana     a
 0352  C2 63 03  jnz     $0363
-0355  3A 1D 20  lda     $201D
+0355  3A 1D 20  lda     $201D           // TODO Load move script
 0358  0F        rrc
-0359  DA 81 03  jc      $0381
+0359  DA 81 03  jc      $0381           // Check if b can be moved to right, and move
 035C  0F        rrc
-035D  DA 8E 03  jc      $038E
+035D  DA 8E 03  jc      $038E           // Check if b can be moved to left, and move
 0360  C3 6F 03  jmp     $036F
 
-0363  CD C0 17  call    $17C0
+0363  CD C0 17  call    $17C0           // IN 1/2 (depending on player)
 0366  07        rlc
 0367  07        rlc
-0368  DA 81 03  jc      $0381           // 1P right
+0368  DA 81 03  jc      $0381           // Check if b can be moved to right, and move
 036B  07        rlc
-036C  DA 8E 03  jc      $038E           // 1P left
-036F  21 18 20  lxi     h,$2018
-0372  CD 3B 1A  call    $1A3B
-0375  CD 47 1A  call    $1A47
-0378  CD 39 14  call    $1439
+036C  DA 8E 03  jc      $038E           // Check if b can be moved to left, and move
+036F  21 18 20  lxi     h,$2018         // then
+0372  CD 3B 1A  call    $1A3B           // Copy data from m to regs (m:5) -> (EDLHB)
+0375  CD 47 1A  call    $1A47           // HL/8 & 111111 | 10 and ret
+0378  CD 39 14  call    $1439           // Draw 8*b from (de) at (hl)
 037B  3E 00     mvi     a,$00
 037D  32 12 20  sta     $2012
 0380  C9        ret
 
+// Check if b can be moved to right, and move
 0381  78        mov     a,b
 0382  FE D9     cpi     $D9
 0384  CA 6F 03  jz      $036F
 0387  3C        inr     a
-0388  32 1B 20  sta     $201B
+0388  32 1B 20  sta     $201B           // TODO player location horizontal
 038B  C3 6F 03  jmp     $036F
 
+// Check if b can be moved to left, and move
 038E  78        mov     a,b
 038F  FE 30     cpi     $30
 0391  CA 6F 03  jz      $036F
 0394  3D        dcr     a
-0395  32 1B 20  sta     $201B
+0395  32 1B 20  sta     $201B           // TODO player location horizontal
 0398  C3 6F 03  jmp     $036F
 
 039B  3C        inr     a
@@ -575,7 +578,7 @@
 03B8  C3 46 03  jmp     $0346
 
 03BB  11 2A 20  lxi     d,$202A
-03BE  CD 06 1A  call    $1A06
+03BE  CD 06 1A  call    $1A06           // msb(DE) XOR (2072) is not set then set CARRY
 03C1  E1        pop     h
 03C2  D0        rnc
 03C3  23        inx     h
@@ -595,7 +598,7 @@
 03DC  FE 0F     cpi     $0F
 03DE  C0        rnz
 03DF  E5        push    h
-03E0  CD 30 04  call    $0430
+03E0  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 03E3  CD 52 14  call    $1452
 03E6  E1        pop     h
 03E7  23        inx     h
@@ -610,18 +613,18 @@
 03F0  35        dcr     m
 03F1  23        inx     h
 03F2  36 08     mvi     m,$08
-03F4  CD 30 04  call    $0430
+03F4  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 03F7  C3 00 14  jmp     $1400
 
 03FA  3C        inr     a
 03FB  77        mov     m,a
-03FC  3A 1B 20  lda     $201B
+03FC  3A 1B 20  lda     $201B           // TODO player location horizontal
 03FF  C6 08     adi     $08
 0401  32 2A 20  sta     $202A
-0404  CD 30 04  call    $0430
+0404  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 0407  C3 00 14  jmp     $1400
 
-040A  CD 30 04  call    $0430
+040A  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 040D  D5        push    d
 040E  E5        push    h
 040F  C5        push    b
@@ -644,15 +647,16 @@
 042C  C8        rz
 042D  C3 36 04  jmp     $0436
 
+// Copy (2027:5) -> (EDLHB)
 0430  21 27 20  lxi     h,$2027
-0433  C3 3B 1A  jmp     $1A3B
+0433  C3 3B 1A  jmp     $1A3B           // Copy data from m to regs (m:5) -> (EDLHB)
 
-0436  CD 30 04  call    $0430
+0436  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 0439  CD 52 14  call    $1452
 043C  21 25 20  lxi     h,$2025
 043F  11 25 1B  lxi     d,$1B25
 0442  06 07     mvi     b,$07
-0444  CD 32 1A  call    $1A32
+0444  CD 32 1A  call    $1A32           // copy (de) to (hl), size b
 0447  2A 8D 20  lhld    $208D
 044A  2C        inr     l
 044B  7D        mov     a,l
@@ -691,7 +695,7 @@
 
 048A  11 35 20  lxi     d,$2035
 048D  3E F9     mvi     a,$F9
-048F  CD 50 05  call    $0550
+048F  CD 50 05  call    $0550           // Store A to (207F); copy (DE) to (2073), size 0B
 0492  3A 46 20  lda     $2046
 0495  32 70 20  sta     $2070
 0498  3A 56 20  lda     $2056
@@ -700,11 +704,11 @@
 04A1  3A 78 20  lda     $2078
 04A4  A7        ana     a
 04A5  21 35 20  lxi     h,$2035
-04A8  C2 5B 05  jnz     $055B
+04A8  C2 5B 05  jnz     $055B           // copy (2073) to (HL), size 0B
 04AB  11 30 1B  lxi     d,$1B30
 04AE  21 30 20  lxi     h,$2030
 04B1  06 10     mvi     b,$10
-04B3  C3 32 1A  jmp     $1A32
+04B3  C3 32 1A  jmp     $1A32           // copy (de) to (hl), size b
 
 04B6  E1        pop     h
 04B7  3A 6E 20  lda     $206E
@@ -715,7 +719,7 @@
 04C1  C0        rnz
 04C2  11 45 20  lxi     d,$2045
 04C5  3E ED     mvi     a,$ED
-04C7  CD 50 05  call    $0550
+04C7  CD 50 05  call    $0550           // Store A to (207F); copy (DE) to (2073), size 0B
 04CA  3A 36 20  lda     $2036
 04CD  32 70 20  sta     $2070
 04D0  3A 56 20  lda     $2056
@@ -729,23 +733,23 @@
 04E7  3A 78 20  lda     $2078
 04EA  A7        ana     a
 04EB  21 45 20  lxi     h,$2045
-04EE  C2 5B 05  jnz     $055B
+04EE  C2 5B 05  jnz     $055B           // copy (2073) to (HL), size 0B
 04F1  11 40 1B  lxi     d,$1B40
 04F4  21 40 20  lxi     h,$2040
 04F7  06 10     mvi     b,$10
-04F9  CD 32 1A  call    $1A32
+04F9  CD 32 1A  call    $1A32           // copy (de) to (hl), size b
 04FC  3A 82 20  lda     $2082
 04FF  3D        dcr     a
 0500  C2 08 05  jnz     $0508
 0503  3E 01     mvi     a,$01
 0505  32 6E 20  sta     $206E
 0508  2A 76 20  lhld    $2076
-050B  C3 7E 06  jmp     $067E
+050B  C3 7E 06  jmp     $067E           // HL -> (2048)
 
 050E  E1        pop     h
 050F  11 55 20  lxi     d,$2055
 0512  3E DB     mvi     a,$DB
-0514  CD 50 05  call    $0550
+0514  CD 50 05  call    $0550           // Store A to (207F); copy (DE) to (2073), size 0B
 0517  3A 46 20  lda     $2046
 051A  32 70 20  sta     $2070
 051D  3A 36 20  lda     $2036
@@ -759,23 +763,25 @@
 0534  3A 78 20  lda     $2078
 0537  A7        ana     a
 0538  21 55 20  lxi     h,$2055
-053B  C2 5B 05  jnz     $055B
+053B  C2 5B 05  jnz     $055B           // copy (2073) to (HL), size 0B
 053E  11 50 1B  lxi     d,$1B50
 0541  21 50 20  lxi     h,$2050
 0544  06 10     mvi     b,$10
-0546  CD 32 1A  call    $1A32
+0546  CD 32 1A  call    $1A32           // copy (de) to (hl), size b
 0549  2A 76 20  lhld    $2076
 054C  22 58 20  shld    $2058
 054F  C9        ret
 
+// Store A to (207F); copy (DE) to (2073), size 0B
 0550  32 7F 20  sta     $207F
 0553  21 73 20  lxi     h,$2073
 0556  06 0B     mvi     b,$0B
-0558  C3 32 1A  jmp     $1A32
+0558  C3 32 1A  jmp     $1A32           // copy (de) to (hl), size b
 
+// copy (2073) to (HL), size 0B
 055B  11 73 20  lxi     d,$2073
 055E  06 0B     mvi     b,$0B
-0560  C3 32 1A  jmp     $1A32
+0560  C3 32 1A  jmp     $1A32           // copy (de) to (hl), size b
 
 0563  21 73 20  lxi     h,$2073
 0566  7E        mov     a,m
@@ -831,7 +837,7 @@
 05C0  C9        ret
 
 05C1  11 7C 20  lxi     d,$207C
-05C4  CD 06 1A  call    $1A06
+05C4  CD 06 1A  call    $1A06           // msb(DE) XOR (2072) is not set then set CARRY
 05C7  D0        rnc
 05C8  23        inx     h
 05C9  7E        mov     a,m
@@ -872,7 +878,8 @@
 0617  32 73 20  sta     $2073
 061A  C9        ret
 
-061B  3A 1B 20  lda     $201B
+// TODO
+061B  3A 1B 20  lda     $201B           // TODO player location horizontal
 061E  C6 08     adi     $08
 0620  67        mov     h,a
 0621  CD 6F 15  call    $156F
@@ -882,14 +889,15 @@
 062A  0E 0B     mvi     c,$0B
 062C  C3 A5 05  jmp     $05A5
 
+// TODO
 062F  0D        dcr     c
-0630  3A 67 20  lda     $2067
+0630  3A 67 20  lda     $2067           // player indicator (21/22)
 0633  67        mov     h,a
 0634  69        mov     l,c
 0635  16 05     mvi     d,$05
 0637  7E        mov     a,m
 0638  A7        ana     a
-0639  37        stc
+0639  37        stc                     // Set CARRY
 063A  C0        rnz
 063B  7D        mov     a,l
 063C  C6 0B     adi     $0B
@@ -898,6 +906,7 @@
 0640  C2 37 06  jnz     $0637
 0643  C9        ret
 
+// TODO
 0644  21 78 20  lxi     h,$2078
 0647  35        dcr     m
 0648  7E        mov     a,m
@@ -916,21 +925,26 @@
 0661  32 7D 20  sta     $207D
 0664  C3 6C 06  jmp     $066C
 
+// TODO
 0667  A7        ana     a
 0668  C0        rnz
 0669  C3 75 06  jmp     $0675
 
+// TODO
 066C  21 79 20  lxi     h,$2079
-066F  CD 3B 1A  call    $1A3B
+066F  CD 3B 1A  call    $1A3B           // Copy data from m to regs (m:5) -> (EDLHB)
 0672  C3 91 14  jmp     $1491
 
+// TODO
 0675  21 79 20  lxi     h,$2079
-0678  CD 3B 1A  call    $1A3B
+0678  CD 3B 1A  call    $1A3B           // Copy data from m to regs (m:5) -> (EDLHB)
 067B  C3 52 14  jmp     $1452
 
+// HL -> (2048)
 067E  22 48 20  shld    $2048
 0681  C9        ret
 
+// TODO
 0682  E1        pop     h
 0683  3A 80 20  lda     $2080
 0686  FE 02     cpi     $02
@@ -952,7 +966,7 @@
 06A6  36 01     mvi     m,$01
 06A8  CD 3C 07  call    $073C
 06AB  11 8A 20  lxi     d,$208A
-06AE  CD 06 1A  call    $1A06
+06AE  CD 06 1A  call    $1A06           // msb(DE) XOR (2072) is not set then set CARRY
 06B1  D0        rnc
 06B2  21 85 20  lxi     h,$2085
 06B5  7E        mov     a,m
@@ -973,8 +987,9 @@
 06D2  D2 F9 06  jnc     $06F9
 06D5  C9        ret
 
+// TODO
 06D6  06 FE     mvi     b,$FE
-06D8  CD DC 19  call    $19DC
+06D8  CD DC 19  call    $19DC           // (2094) AND b and then OUT 3
 06DB  23        inx     h
 06DC  35        dcr     m
 06DD  7E        mov     a,m
@@ -995,13 +1010,14 @@
 06F7  00        nop
 06F8  00        nop
 06F9  CD 42 07  call    $0742
-06FC  CD CB 14  call    $14CB
+06FC  CD CB 14  call    $14CB           // Clear 8*b box
 06FF  21 83 20  lxi     h,$2083
 0702  06 0A     mvi     b,$0A
-0704  CD 5F 07  call    $075F
+0704  CD 5F 07  call    $075F           // copy (1B83) to (hl), size b
 0707  06 FE     mvi     b,$FE
-0709  C3 DC 19  jmp     $19DC
+0709  C3 DC 19  jmp     $19DC           // (2094) AND b and then OUT 3
 
+// TODO
 070C  3E 01     mvi     a,$01
 070E  32 F1 20  sta     $20F1
 0711  2A 8D 20  lhld    $208D
@@ -1026,99 +1042,103 @@
 0732  29        dad     h
 0733  22 F2 20  shld    $20F2
 0736  CD 42 07  call    $0742
-0739  C3 F1 08  jmp     $08F1
+0739  C3 F1 08  jmp     $08F1           // Draw string (length = 2, content = (de))
 
+// TODO
 073C  CD 42 07  call    $0742
-073F  C3 39 14  jmp     $1439
+073F  C3 39 14  jmp     $1439           // Draw 8*b from (de) at (hl)
 
+// TODO
 0742  21 87 20  lxi     h,$2087
-0745  CD 3B 1A  call    $1A3B
-0748  C3 47 1A  jmp     $1A47
+0745  CD 3B 1A  call    $1A3B           // Copy data from m to regs (m:5) -> (EDLHB)
+0748  C3 47 1A  jmp     $1A47           // HL/8 & 111111 | 10 and ret
 
+// TODO
 074B  06 10     mvi     b,$10
 074D  21 98 20  lxi     h,$2098
 0750  7E        mov     a,m
 0751  B0        ora     b
 0752  77        mov     m,a
-0753  CD 70 17  call    $1770
+0753  CD 70 17  call    $1770           // Sound related
 0756  21 7C 1D  lxi     h,$1D7C
 0759  22 87 20  shld    $2087
 075C  C3 3C 07  jmp     $073C
 
+// copy (1B83) to (hl), size b
 075F  11 83 1B  lxi     d,$1B83
-0762  C3 32 1A  jmp     $1A32
+0762  C3 32 1A  jmp     $1A32           // copy (de) to (hl), size b
 
 0765  3E 01     mvi     a,$01
-0767  32 93 20  sta     $2093
+0767  32 93 20  sta     $2093           // Set (2093)
 076A  31 00 24  lxi     sp,$2400
 076D  FB        ei
-076E  CD 79 19  call    $1979
-0771  CD D6 09  call    $09D6           // Clear mid screen
-0774  21 13 30  lxi     h,$3013
+076E  CD 79 19  call    $1979           // clear (20E9) and draw "credit XX"
+0771  CD D6 09  call    $09D6           // Clear the middle of the screen
+0774  21 13 30  lxi     h,$3013         // Draw "push"
 0777  11 F3 1F  lxi     d,$1FF3
 077A  0E 04     mvi     c,$04
-077C  CD F3 08  call    $08F3               // Draw string (length = c - 1)
+077C  CD F3 08  call    $08F3           // Draw string (length = c - 1, content = (de))
 077F  3A EB 20  lda     $20EB
 0782  3D        dcr     a
 0783  21 10 28  lxi     h,$2810
 0786  0E 14     mvi     c,$14
-0788  C2 57 08  jnz     $0857
+0788  C2 57 08  jnz     $0857           // Draw "1P/2P button" then wait for start button
 078B  11 CF 1A  lxi     d,$1ACF
-078E  CD F3 08  call    $08F3               // Draw string (length = c - 1)
+078E  CD F3 08  call    $08F3           // Draw string (length = c - 1, content = (de))
 0791  DB 01     in      $01
 0793  E6 04     ani     $04                 // P1 start
 0795  CA 7F 07  jz      $077F
-0798  06 99     mvi     b,$99
+0798  06 99     mvi     b,$99               // 1P start
 079A  AF        xra     a
-079B  32 CE 20  sta     $20CE               // 2 players?
+079B  32 CE 20  sta     $20CE               // 1 player
 079E  3A EB 20  lda     $20EB               // Decrement coin
 07A1  80        add     b
 07A2  27        daa
 07A3  32 EB 20  sta     $20EB               // Decrement coin
-07A6  CD 47 19  call    $1947
+07A6  CD 47 19  call    $1947           // Draw coin from (20EB)
 07A9  21 00 00  lxi     h,$0000
-07AC  22 F8 20  shld    $20F8
-07AF  22 FC 20  shld    $20FC
-07B2  CD 25 19  call    $1925
-07B5  CD 2B 19  call    $192B
-07B8  CD D7 19  call    $19D7
+07AC  22 F8 20  shld    $20F8           // Clear (20F8:2)
+07AF  22 FC 20  shld    $20FC           // Clear (20FC:2)
+07B2  CD 25 19  call    $1925           // Draw XXXX (number) from 20F8 - 20FB
+07B5  CD 2B 19  call    $192B           // Draw XXXX (number) from 20FC - 20FF
+07B8  CD D7 19  call    $19D7           // clear (20E9)
 07BB  21 01 01  lxi     h,$0101
 07BE  7C        mov     a,h
-07BF  32 EF 20  sta     $20EF
+07BF  32 EF 20  sta     $20EF           // TODO I'm playing now
 07C2  22 E7 20  shld    $20E7
 07C5  22 E5 20  shld    $20E5
 07C8  CD 56 19  call    $1956               // Zero out screen
-07CB  CD EF 01  call    $01EF               // Set 2142 +2C*4
+07CB  CD EF 01  call    $01EF           // Set 2142 to 1D20, size 2C * 4
 07CE  CD F5 01  call    $01F5               // Set 2242 to 1D20, size 2C * 4
-07D1  CD D1 08  call    $08D1               // Check lives
+07D1  CD D1 08  call    $08D1           // adjust lives according to cheat code (to A)
 07D4  32 FF 21  sta     $21FF               // Store lives
-07D7  32 FF 22  sta     $22FF
-07DA  CD D7 00  call    $00D7
+07D7  32 FF 22  sta     $22FF               // Store lives
+07DA  CD D7 00  call    $00D7           // set (player)FB to 2 (both), clear score number if single player
 07DD  AF        xra     a
 07DE  32 FE 21  sta     $21FE
 07E1  32 FE 22  sta     $22FE
 07E4  CD C0 01  call    $01C0               // Reset 2100 - 2137 to 0x01
-07E7  CD 04 19  call    $1904
+07E7  CD 04 19  call    $1904               // Reset 2200 - 2237 to 0x01
 07EA  21 78 38  lxi     h,$3878
 07ED  22 FC 21  shld    $21FC
 07F0  22 FC 22  shld    $22FC
 07F3  CD E4 01  call    $01E4           // Reset 2000 - 20C0
-07F6  CD 7F 1A  call    $1A7F           // Draw "lives"
-07F9  CD 8D 08  call    $088D
-07FC  CD D6 09  call    $09D6           // Clear mid screen
+07F6  CD 7F 1A  call    $1A7F           // Draw "lives" indicators and number ((2067) is 21/22)
+07F9  CD 8D 08  call    $088D           // Draw starting actual game screen
+07FC  CD D6 09  call    $09D6           // Clear the middle of the screen
 07FF  00        nop
 0800  AF        xra     a
 0801  32 C1 20  sta     $20C1
 0804  CD CF 01  call    $01CF
-0807  3A 67 20  lda     $2067
+0807  3A 67 20  lda     $2067           // player indicator (21/22)
 080A  0F        rrc
 080B  DA 72 08  jc      $0872
 080E  CD 13 02  call    $0213
 0811  CD CF 01  call    $01CF
 0814  CD B1 00  call    $00B1
-0817  CD D1 19  call    $19D1
+0817  CD D1 19  call    $19D1           // set (20E9) to 1
 081A  06 20     mvi     b,$20
-081C  CD FA 18  call    $18FA
+081C  CD FA 18  call    $18FA           // (2094) OR b and then OUT 3
 081F  CD 18 16  call    $1618
 0822  CD 0A 19  call    $190A
 0825  CD F3 15  call    $15F3
@@ -1129,11 +1149,11 @@
 0832  CD 0E 17  call    $170E
 0835  CD 35 09  call    $0935
 0838  CD D8 08  call    $08D8
-083B  CD 2C 17  call    $172C
-083E  CD 59 0A  call    $0A59
+083B  CD 2C 17  call    $172C           // Sound related
+083E  CD 59 0A  call    $0A59           // cmp (2015) with FF
 0841  CA 49 08  jz      $0849
 0844  06 04     mvi     b,$04
-0846  CD FA 18  call    $18FA
+0846  CD FA 18  call    $18FA           // (2094) OR b and then OUT 3
 0849  CD 75 17  call    $1775
 084C  D3 06     out     $06
 084E  CD 04 18  call    $1804
@@ -1143,72 +1163,81 @@
 0855  00        nop
 0856  00        nop
 
+// Draw "push 1P/2P button" then wait for start button
 0857  11 BA 1A  lxi     d,$1ABA
-085A  CD F3 08  call    $08F3               // Draw string (length = c - 1)
+085A  CD F3 08  call    $08F3           // Draw string (length = c - 1, content = (de))
 085D  06 98     mvi     b,$98
 085F  DB 01     in      $01
 0861  0F        rrc
 0862  0F        rrc
-0863  DA 6D 08  jc      $086D           // 2P start
+0863  DA 6D 08  jc      $086D           // if 1P start button, Set A to 1
 0866  0F        rrc
-0867  DA 98 07  jc      $0798           // 1P start
-086A  C3 7F 07  jmp     $077F
+0867  DA 98 07  jc      $0798           // if 2P start button, 0 -> A; 99 -> B
+086A  C3 7F 07  jmp     $077F           // otherwise
 
+// Set A to 1
 086D  3E 01     mvi     a,$01
 086F  C3 9B 07  jmp     $079B
 
+// TODO
 0872  CD 1A 02  call    $021A
 0875  C3 14 08  jmp     $0814
 
+// (2008) -> a; (2009:2) -> DE; (2067)FC -> HL
 0878  3A 08 20  lda     $2008
 087B  47        mov     b,a
 087C  2A 09 20  lhld    $2009
 087F  EB        xchg
-0880  C3 86 08  jmp     $0886
+0880  C3 86 08  jmp     $0886           // let HL be (2067)FC
 
 0883  00        nop
 0884  00        nop
 0885  00        nop
-0886  3A 67 20  lda     $2067
+
+// let HL be (2067)FC
+0886  3A 67 20  lda     $2067           // player indicator (21/22)
 0889  67        mov     h,a
 088A  2E FC     mvi     l,$FC
 088C  C9        ret
 
+// Draw starting actual game screen
 088D  21 11 2B  lxi     h,$2B11
 0890  11 70 1B  lxi     d,$1B70
 0893  0E 0E     mvi     c,$0E
-0895  CD F3 08  call    $08F3               // Draw string (length = c - 1)
-0898  3A 67 20  lda     $2067
+0895  CD F3 08  call    $08F3           // Draw string (length = c - 1, content = (de))
+0898  3A 67 20  lda     $2067           // player indicator (21/22)
 089B  0F        rrc
 089C  3E 1C     mvi     a,$1C
 089E  21 11 37  lxi     h,$3711
-08A1  D4 FF 08  cnc     $08FF
+08A1  D4 FF 08  cnc     $08FF           // Depending on A, draw a char
 08A4  3E B0     mvi     a,$B0
-08A6  32 C0 20  sta     $20C0
-08A9  3A C0 20  lda     $20C0
+08A6  32 C0 20  sta     $20C0           // (20C0) is delay
+08A9  3A C0 20  lda     $20C0           // (20C0) is delay
 08AC  A7        ana     a
 08AD  C8        rz
 08AE  E6 04     ani     $04
-08B0  C2 BC 08  jnz     $08BC
-08B3  CD CA 09  call    $09CA
-08B6  CD 31 19  call    $1931
+08B0  C2 BC 08  jnz     $08BC           // Clear (flash) the player score
+08B3  CD CA 09  call    $09CA           // let HL = 20F8/20FC, depending on lsb(2067)
+08B6  CD 31 19  call    $1931           // Draw XXXX (number) from m,m+1 to m+2,m+3
 08B9  C3 A9 08  jmp     $08A9
 
+// Clear (flash) the player score
 08BC  06 20     mvi     b,$20
 08BE  21 1C 27  lxi     h,$271C
-08C1  3A 67 20  lda     $2067
+08C1  3A 67 20  lda     $2067           // player indicator (21/22)
 08C4  0F        rrc
 08C5  DA CB 08  jc      $08CB
 08C8  21 1C 39  lxi     h,$391C
-08CB  CD CB 14  call    $14CB
+08CB  CD CB 14  call    $14CB           // Clear 8*b box
 08CE  C3 A9 08  jmp     $08A9
 
-// Cheat code
+// adjust lives according to cheat code (to A)
 08D1  DB 02     in      $02
 08D3  E6 03     ani     $03
 08D5  C6 03     adi     $03
 08D7  C9        ret
 
+// TODO
 08D8  3A 82 20  lda     $2082
 08DB  FE 09     cpi     $09
 08DD  D0        rnc
@@ -1216,24 +1245,27 @@
 08E0  32 7E 20  sta     $207E
 08E3  C9        ret
 
-08E4  3A CE 20  lda     $20CE
+// Clear the score number if single player
+08E4  3A CE 20  lda     $20CE           // two player variable
 08E7  A7        ana     a
 08E8  C0        rnz
 08E9  21 1C 39  lxi     h,$391C
 08EC  06 20     mvi     b,$20
-08EE  C3 CB 14  jmp     $14CB
+08EE  C3 CB 14  jmp     $14CB           // Clear 8*b box
 
+// Draw string (length = 2, content = (de))
 08F1  0E 03     mvi     c,$03
-// Draw string (length = c - 1)
+// Draw string (length = c - 1, content = (de))
 08F3  1A        ldax    d
 08F4  D5        push    d
-08F5  CD FF 08  call    $08FF
+08F5  CD FF 08  call    $08FF           // Depending on A, draw a char
 08F8  D1        pop     d
 08F9  13        inx     d
 08FA  0D        dcr     c
 08FB  C2 F3 08  jnz     $08F3
 08FE  C9        ret
 
+// Depending on A, draw a char
 08FF  11 00 1E  lxi     d,$1E00
 0902  E5        push    h
 0903  26 00     mvi     h,$00
@@ -1241,15 +1273,16 @@
 0906  29        dad     h
 0907  29        dad     h
 0908  29        dad     h
-0909  19        dad
+0909  19        dad     d
 090A  EB        xchg
 090B  E1        pop     h
 090C  06 08     mvi     b,$08
 090E  D3 06     out     $06
-0910  C3 39 14  jmp     $1439
+0910  C3 39 14  jmp     $1439           // Draw 8*b from (de) at (hl)
 
+// TODO
 0913  3A 09 20  lda     $2009
-0916  FE 78     cpi     'x'
+0916  FE 78     cpi     $78
 0918  D0        rnc
 0919  2A 91 20  lhld    $2091
 091C  7D        mov     a,l
@@ -1262,11 +1295,13 @@
 092A  22 91 20  shld    $2091
 092D  C9        ret
 
-092E  CD 11 16  call    $1611           // Set hl -> (2067) 00
+// load (player)FF to HL
+092E  CD 11 16  call    $1611           // load (player) to H
 0931  2E FF     mvi     l,$FF
 0933  7E        mov     a,m
 0934  C9        ret
 
+// TODO
 0935  CD 10 19  call    $1910
 0938  2B        dcx     h
 0939  2B        dcx     h
@@ -1278,12 +1313,12 @@
 0941  E6 08     ani     $08
 0943  CA 48 09  jz      $0948
 0946  06 10     mvi     b,$10
-0948  CD CA 09  call    $09CA
+0948  CD CA 09  call    $09CA           // let HL = 20F8/20FC, depending on lsb(2067)
 094B  23        inx     h
 094C  7E        mov     a,m
 094D  B8        cmp     b
 094E  D8        rc
-094F  CD 2E 09  call    $092E
+094F  CD 2E 09  call    $092E           // load (player)FF to HL
 0952  34        inr     m
 0953  7E        mov     a,m
 0954  F5        push    psw
@@ -1294,7 +1329,7 @@
 095B  C2 58 09  jnz     $0958
 095E  06 10     mvi     b,$10
 0960  11 60 1C  lxi     d,$1C60
-0963  CD 39 14  call    $1439
+0963  CD 39 14  call    $1439           // Draw 8*b from (de) at (hl)
 0966  F1        pop     psw
 0967  3C        inr     a
 0968  CD 8B 1A  call    $1A8B
@@ -1305,8 +1340,9 @@
 0972  3E FF     mvi     a,$FF
 0974  32 99 20  sta     $2099
 0977  06 10     mvi     b,$10
-0979  C3 FA 18  jmp     $18FA
+0979  C3 FA 18  jmp     $18FA           // (2094) OR b and then OUT 3
 
+// let m be 10/20/30 if A is <02/<04/else
 097C  21 A0 1D  lxi     h,$1DA0
 097F  FE 02     cpi     $02
 0981  D8        rc
@@ -1316,7 +1352,8 @@
 0986  23        inx     h
 0987  C9        ret
 
-0988  CD CA 09  call    $09CA
+// TODO
+0988  CD CA 09  call    $09CA           // let HL = 20F8/20FC, depending on lsb(2067)
 098B  3A F1 20  lda     $20F1
 098E  A7        ana     a
 098F  C8        rz
@@ -1342,11 +1379,13 @@
 09A7  23        inx     h
 09A8  66        mov     h,m
 09A9  6F        mov     l,a
-09AA  C3 AD 09  jmp     $09AD
+09AA  C3 AD 09  jmp     $09AD           // Draw XXXX (number) from DE
 
+// Draw XXXX (number) from DE
 09AD  7A        mov     a,d
-09AE  CD B2 09  call    $09B2
+09AE  CD B2 09  call    $09B2           // Draw XX (number) from A
 09B1  7B        mov     a,e
+// Draw XX (number) from A
 09B2  D5        push    d
 09B3  F5        push    psw
 09B4  0F        rrc
@@ -1354,17 +1393,19 @@
 09B6  0F        rrc
 09B7  0F        rrc
 09B8  E6 0F     ani     $0F
-09BA  CD C5 09  call    $09C5
+09BA  CD C5 09  call    $09C5           // Draw decimal number X from A
 09BD  F1        pop     psw
 09BE  E6 0F     ani     $0F
-09C0  CD C5 09  call    $09C5
+09C0  CD C5 09  call    $09C5           // Draw decimal number X from A
 09C3  D1        pop     d
 09C4  C9        ret
 
+// Draw decimal number X from A
 09C5  C6 1A     adi     $1A
-09C7  C3 FF 08  jmp     $08FF
+09C7  C3 FF 08  jmp     $08FF           // Depending on A, draw a char
 
-09CA  3A 67 20  lda     $2067
+// let HL = 20F8/20FC, depending on lsb(2067)
+09CA  3A 67 20  lda     $2067           // player indicator (21/22)
 09CD  0F        rrc
 09CE  21 F8 20  lxi     h,$20F8
 09D1  D8        rc
@@ -1386,16 +1427,17 @@
 09EB  DA D9 09  jc      $09D9
 09EE  C9        ret
 
-09EF  CD 3C 0A  call    $0A3C
+// TODO
+09EF  CD 3C 0A  call    $0A3C           // TODO mechanism to wait for (2015)??
 09F2  AF        xra     a
 09F3  32 E9 20  sta     $20E9
-09F6  CD D6 09  call    $09D6               // Clear mid screen
-09F9  3A 67 20  lda     $2067
+09F6  CD D6 09  call    $09D6           // Clear the middle of the screen
+09F9  3A 67 20  lda     $2067           // player indicator (21/22)
 09FC  F5        push    psw
 09FD  CD E4 01  call    $01E4           // Reset 2000 - 20C0
 0A00  F1        pop     psw
-0A01  32 67 20  sta     $2067
-0A04  3A 67 20  lda     $2067
+0A01  32 67 20  sta     $2067           // player indicator (21/22)
+0A04  3A 67 20  lda     $2067           // player indicator (21/22)
 0A07  67        mov     h,a
 0A08  E5        push    h
 0A09  2E FE     mvi     l,$FE
@@ -1419,39 +1461,42 @@
 0A25  3E 21     mvi     a,$21
 0A27  32 98 20  sta     $2098
 0A2A  CD F5 01  call    $01F5               // Set 2242 to 1D20, size 2C * 4
-0A2D  CD 04 19  call    $1904
+0A2D  CD 04 19  call    $1904               // Reset 2200 - 2237 to 0x01
 0A30  C3 04 08  jmp     $0804
 
-0A33  CD EF 01  call    $01EF               // Set 2142 +2C*4
+0A33  CD EF 01  call    $01EF               // Set 2142 to 1D20, size 2C * 4
 0A36  CD C0 01  call    $01C0               // Reset 2100 - 2137 to 0x01
-0A39  C3 04 08  jmp     $0804
+0A39  C3 04 08  jmp     $0804               // ----
 
-0A3C  CD 59 0A  call    $0A59
+// TODO mechanism to wait for (2015)??
+0A3C  CD 59 0A  call    $0A59           // cmp (2015) with FF ++++
 0A3F  C2 52 0A  jnz     $0A52
 0A42  3E 30     mvi     a,$30
-0A44  32 C0 20  sta     $20C0
-0A47  3A C0 20  lda     $20C0
+0A44  32 C0 20  sta     $20C0           // (20C0) is delay
+0A47  3A C0 20  lda     $20C0           // (20C0) is delay
 0A4A  A7        ana     a
 0A4B  C8        rz
-0A4C  CD 59 0A  call    $0A59
+0A4C  CD 59 0A  call    $0A59           // cmp (2015) with FF
 0A4F  CA 47 0A  jz      $0A47
-0A52  CD 59 0A  call    $0A59
+0A52  CD 59 0A  call    $0A59           // cmp (2015) with FF
 0A55  C2 52 0A  jnz     $0A52
-0A58  C9        ret
+0A58  C9        ret                     // ----
 
+// cmp (2015) with FF
 0A59  3A 15 20  lda     $2015
 0A5C  FE FF     cpi     $FF
 0A5E  C9        ret
 
-0A5F  3A EF 20  lda     $20EF
+// TODO
+0A5F  3A EF 20  lda     $20EF           // TODO I'm playing now
 0A62  A7        ana     a
 0A63  CA 7C 0A  jz      $0A7C
 0A66  48        mov     c,b
 0A67  06 08     mvi     b,$08
-0A69  CD FA 18  call    $18FA
+0A69  CD FA 18  call    $18FA           // (2094) OR b and then OUT 3
 0A6C  41        mov     b,c
 0A6D  78        mov     a,b
-0A6E  CD 7C 09  call    $097C
+0A6E  CD 7C 09  call    $097C           // let m be 10/20/30 if A is <02/<04/else
 0A71  7E        mov     a,m
 0A72  21 F3 20  lxi     h,$20F3
 0A75  36 00     mvi     m,$00
@@ -1462,6 +1507,7 @@
 0A7C  21 62 20  lxi     h,$2062
 0A7F  C9        ret
 
+// TODO
 0A80  3E 02     mvi     a,$02
 0A82  32 C1 20  sta     $20C1
 0A85  D3 06     out     $06
@@ -1472,13 +1518,14 @@
 0A8F  32 C1 20  sta     $20C1
 0A92  C9        ret
 
+// Draw C chars from (DE) to (HL)
 0A93  D5        push    d
 0A94  1A        ldax    d
-0A95  CD FF 08  call    $08FF
+0A95  CD FF 08  call    $08FF           // Depending on A, draw a char
 0A98  D1        pop     d
 0A99  3E 07     mvi     a,$07
-0A9B  32 C0 20  sta     $20C0
-0A9E  3A C0 20  lda     $20C0
+0A9B  32 C0 20  sta     $20C0           // (20C0) is delay
+0A9E  3A C0 20  lda     $20C0           // (20C0) is delay
 0AA1  3D        dcr     a
 0AA2  C2 9E 0A  jnz     $0A9E
 0AA5  13        inx     d
@@ -1486,31 +1533,36 @@
 0AA7  C2 93 0A  jnz     $0A93
 0AAA  C9        ret
 
+// TODO
 0AAB  21 50 20  lxi     h,$2050
 0AAE  C3 4B 02  jmp     $024B
 
+// Delay for $40
 0AB1  3E 40     mvi     a,$40
 0AB3  C3 D7 0A  jmp     $0AD7
 
+// Delay for $80
 0AB6  3E 80     mvi     a,$80
 0AB8  C3 D7 0A  jmp     $0AD7
 
+// TODO Start drawing one unit
 0ABB  E1        pop     h
-0ABC  C3 72 00  jmp     $0072
+0ABC  C3 72 00  jmp     $0072           // TODO Start drawing one unit
 
-// Check 20C1 state
+// TODO Check 20C1 state
 0ABF  3A C1 20  lda     $20C1
 0AC2  0F        rrc
-0AC3  DA BB 0A  jc      $0ABB
+0AC3  DA BB 0A  jc      $0ABB           // TODO Start drawing one unit
 0AC6  0F        rrc
 0AC7  DA 68 18  jc      $1868
 0ACA  0F        rrc
 0ACB  DA AB 0A  jc      $0AAB
 0ACE  C9        ret
 
+// Draw "space invaders"
 0ACF  21 14 2B  lxi     h,$2B14
 0AD2  0E 0F     mvi     c,$0F
-0AD4  C3 93 0A  jmp     $0A93
+0AD4  C3 93 0A  jmp     $0A93           // Draw C chars from (DE) to (HL)
 
 // Delay loop. Mem loc is 20C0
 0AD7  32 C0 20  sta     $20C0
@@ -1519,9 +1571,10 @@
 0ADE  C2 DA 0A  jnz     $0ADA
 0AE1  C9        ret
 
+// Copy (de) to (20C2), size 0C
 0AE2  21 C2 20  lxi     h,$20C2
 0AE5  06 0C     mvi     b,$0C
-0AE7  C3 32 1A  jmp     $1A32
+0AE7  C3 32 1A  jmp     $1A32           // copy (de) to (hl), size b
 
 // Main game
 0AEA  AF        xra     a
@@ -1534,11 +1587,11 @@
 0AF9  A7        ana     a
 0AFA  21 17 30  lxi     h,$3017
 0AFD  0E 04     mvi     c,$04
-0AFF  C2 E8 0B  jnz     $0BE8
+0AFF  C2 E8 0B  jnz     $0BE8           // Draw normal "play"
 0B02  11 FA 1C  lxi     d,$1CFA
-0B05  CD 93 0A  call    $0A93
+0B05  CD 93 0A  call    $0A93           // Draw C chars from (DE) to (HL)
 0B08  11 AF 1D  lxi     d,$1DAF
-0B0B  CD CF 0A  call    $0ACF
+0B0B  CD CF 0A  call    $0ACF           // Draw "space invaders"
 0B0E  CD B1 0A  call    $0AB1           // Delay for $40 (after "play space invader")
 0B11  CD 15 18  call    $1815           // score board
 0B14  CD B6 0A  call    $0AB6           // Delay for $80 (after "score board")
@@ -1546,59 +1599,59 @@
 0B1A  A7        ana     a
 0B1B  C2 4A 0B  jnz     $0B4A
 0B1E  11 95 1A  lxi     d,$1A95
-0B21  CD E2 0A  call    $0AE2
+0B21  CD E2 0A  call    $0AE2           // Copy (de) to (20C2), size 0C
 0B24  CD 80 0A  call    $0A80
 0B27  11 B0 1B  lxi     d,$1BB0
-0B2A  CD E2 0A  call    $0AE2
+0B2A  CD E2 0A  call    $0AE2           // Copy (de) to (20C2), size 0C
 0B2D  CD 80 0A  call    $0A80
-0B30  CD B1 0A  call    $0AB1
+0B30  CD B1 0A  call    $0AB1           // Delay for $40
 0B33  11 C9 1F  lxi     d,$1FC9
-0B36  CD E2 0A  call    $0AE2
+0B36  CD E2 0A  call    $0AE2           // Copy (de) to (20C2), size 0C
 0B39  CD 80 0A  call    $0A80
-0B3C  CD B1 0A  call    $0AB1
+0B3C  CD B1 0A  call    $0AB1           // Delay for $40
 0B3F  21 B7 33  lxi     h,$33B7
 0B42  06 0A     mvi     b,$0A
-0B44  CD CB 14  call    $14CB
+0B44  CD CB 14  call    $14CB           // Clear 8*b box
 0B47  CD B6 0A  call    $0AB6           // Delay for $80
-0B4A  CD D6 09  call    $09D6           // Clear mid screen
+0B4A  CD D6 09  call    $09D6           // Clear the middle of the screen
 0B4D  3A FF 21  lda     $21FF           // Load live?
 0B50  A7        ana     a
 0B51  C2 5D 0B  jnz     $0B5D
-0B54  CD D1 08  call    $08D1           // If life == 1 check cheat code
+0B54  CD D1 08  call    $08D1           // adjust lives according to cheat code (to A)
 0B57  32 FF 21  sta     $21FF
-0B5A  CD 7F 1A  call    $1A7F           // Draw "lives"
+0B5A  CD 7F 1A  call    $1A7F           // Draw "lives" indicators and number ((2067) is 21/22)
 0B5D  CD E4 01  call    $01E4           // Reset 2000 - 20C0
 0B60  CD C0 01  call    $01C0               // Reset 2100 - 2137 to 0x01
-0B63  CD EF 01  call    $01EF               // Set 2142 +2C*4 to 1D20
-0B66  CD 1A 02  call    $021A               // Draw "bunckers"
+0B63  CD EF 01  call    $01EF           // Set 2142 to 1D20, size 2C * 4
+0B66  CD 1A 02  call    $021A
 0B69  3E 01     mvi     a,$01
 0B6B  32 C1 20  sta     $20C1           // Set 20C1
 0B6E  CD CF 01  call    $01CF
 0B71  CD 18 16  call    $1618
 0B74  CD F1 0B  call    $0BF1
 0B77  D3 06     out     $06
-0B79  CD 59 0A  call    $0A59               // Check if 2015 is FF
+0B79  CD 59 0A  call    $0A59           // cmp (2015) with FF
 0B7C  CA 71 0B  jz      $0B71
 0B7F  AF        xra     a
 0B80  32 25 20  sta     $2025
-0B83  CD 59 0A  call    $0A59               // Check if 2015 is FF
+0B83  CD 59 0A  call    $0A59           // cmp (2015) with FF
 0B86  C2 83 0B  jnz     $0B83
 0B89  AF        xra     a
 0B8A  32 C1 20  sta     $20C1
-0B8D  CD B1 0A  call    $0AB1
-0B90  CD 88 19  call    $1988               // HIT
+0B8D  CD B1 0A  call    $0AB1           // Delay for $40
+0B90  CD 88 19  call    $1988           // Clear the middle of the screen (hit?)
 0B93  0E 0C     mvi     c,$0C
 0B95  21 11 2C  lxi     h,$2C11
 0B98  11 90 1F  lxi     d,$1F90
-0B9B  CD F3 08  call    $08F3               // Draw string (length = c - 1)
-0B9E  3A EC 20  lda     $20EC
+0B9B  CD F3 08  call    $08F3           // Draw string (length = c - 1, content = (de))
+0B9E  3A EC 20  lda     $20EC               // even/odd
 0BA1  FE 00     cpi     $00
 0BA3  C2 AE 0B  jnz     $0BAE
 0BA6  21 11 33  lxi     h,$3311
 0BA9  3E 02     mvi     a,$02
-0BAB  CD FF 08  call    $08FF
+0BAB  CD FF 08  call    $08FF           // Depending on A, draw a char
 0BAE  01 9C 1F  lxi     b,$1F9C
-0BB1  CD 56 18  call    $1856
+0BB1  CD 56 18  call    $1856           // if ((bc) == FF) set CARRY and return; else load 4B from (bc) to hl de and clear CARRY
 0BB4  CD 4C 18  call    $184C
 0BB7  DB 02     in      $02
 0BB9  07        rlc
@@ -1606,2085 +1659,2089 @@
 0BBD  01 A0 1F  lxi     b,$1FA0
 0BC0  CD 3A 18  call    $183A
 0BC3  CD B6 0A  call    $0AB6           // Delay for $80
-0BC6  3A EC 20  lda     $20EC
+0BC6  3A EC 20  lda     $20EC               // even/odd
 0BC9  FE 00     cpi     $00
 0BCB  C2 DA 0B  jnz     $0BDA
 0BCE  11 D5 1F  lxi     d,$1FD5
-0BD1  CD E2 0A  call    $0AE2
+0BD1  CD E2 0A  call    $0AE2           // Copy (de) to (20C2), size 0C
 0BD4  CD 80 0A  call    $0A80
 0BD7  CD 9E 18  call    $189E
-0BDA  21 EC 20  lxi     h,$20EC
+0BDA  21 EC 20  lxi     h,$20EC                 // even/odd
 0BDD  7E        mov     a,m
 0BDE  3C        inr     a
 0BDF  E6 01     ani     $01
 0BE1  77        mov     m,a
-0BE2  CD D6 09  call    $09D6           // Clear mid screen
+0BE2  CD D6 09  call    $09D6           // Clear the middle of the screen
 0BE5  C3 DF 18  jmp     $18DF
 
+// Draw normal "play"
 0BE8  11 AB 1D  lxi     d,$1DAB
-0BEB  CD 93 0A  call    $0A93
+0BEB  CD 93 0A  call    $0A93           // Draw C chars from (DE) to (HL)
 0BEE  C3 0B 0B  jmp     $0B0B
 
+// TODO
 0BF1  CD 0A 19  call    $190A
 0BF4  C3 9A 19  jmp     $199A
 
-0BF7  13        inx     d
-0BF8  00        nop
-0BF9  08        nop                  ;Note: Alternative opcode used
-0BFA  13        inx     d
-0BFB  0E 26     mvi     c,$26
-0BFD  02        stax    b
-0BFE  0E 0F     mvi     c,$0F
-0C00  00        nop
-0C01  00        nop
-0C02  00        nop
-0C03  00        nop
-0C04  00        nop
-0C05  00        nop
-0C06  00        nop
-0C07  00        nop
-0C08  00        nop
-0C09  00        nop
-0C0A  00        nop
-0C0B  00        nop
-0C0C  00        nop
-0C0D  00        nop
-0C0E  00        nop
-0C0F  00        nop
-0C10  00        nop
-0C11  00        nop
-0C12  00        nop
-0C13  00        nop
-0C14  00        nop
-0C15  00        nop
-0C16  00        nop
-0C17  00        nop
-0C18  00        nop
-0C19  00        nop
-0C1A  00        nop
-0C1B  00        nop
-0C1C  00        nop
-0C1D  00        nop
-0C1E  00        nop
-0C1F  00        nop
-0C20  00        nop
-0C21  00        nop
-0C22  00        nop
-0C23  00        nop
-0C24  00        nop
-0C25  00        nop
-0C26  00        nop
-0C27  00        nop
-0C28  00        nop
-0C29  00        nop
-0C2A  00        nop
-0C2B  00        nop
-0C2C  00        nop
-0C2D  00        nop
-0C2E  00        nop
-0C2F  00        nop
-0C30  00        nop
-0C31  00        nop
-0C32  00        nop
-0C33  00        nop
-0C34  00        nop
-0C35  00        nop
-0C36  00        nop
-0C37  00        nop
-0C38  00        nop
-0C39  00        nop
-0C3A  00        nop
-0C3B  00        nop
-0C3C  00        nop
-0C3D  00        nop
-0C3E  00        nop
-0C3F  00        nop
-0C40  00        nop
-0C41  00        nop
-0C42  00        nop
-0C43  00        nop
-0C44  00        nop
-0C45  00        nop
-0C46  00        nop
-0C47  00        nop
-0C48  00        nop
-0C49  00        nop
-0C4A  00        nop
-0C4B  00        nop
-0C4C  00        nop
-0C4D  00        nop
-0C4E  00        nop
-0C4F  00        nop
-0C50  00        nop
-0C51  00        nop
-0C52  00        nop
-0C53  00        nop
-0C54  00        nop
-0C55  00        nop
-0C56  00        nop
-0C57  00        nop
-0C58  00        nop
-0C59  00        nop
-0C5A  00        nop
-0C5B  00        nop
-0C5C  00        nop
-0C5D  00        nop
-0C5E  00        nop
-0C5F  00        nop
-0C60  00        nop
-0C61  00        nop
-0C62  00        nop
-0C63  00        nop
-0C64  00        nop
-0C65  00        nop
-0C66  00        nop
-0C67  00        nop
-0C68  00        nop
-0C69  00        nop
-0C6A  00        nop
-0C6B  00        nop
-0C6C  00        nop
-0C6D  00        nop
-0C6E  00        nop
-0C6F  00        nop
-0C70  00        nop
-0C71  00        nop
-0C72  00        nop
-0C73  00        nop
-0C74  00        nop
-0C75  00        nop
-0C76  00        nop
-0C77  00        nop
-0C78  00        nop
-0C79  00        nop
-0C7A  00        nop
-0C7B  00        nop
-0C7C  00        nop
-0C7D  00        nop
-0C7E  00        nop
-0C7F  00        nop
-0C80  00        nop
-0C81  00        nop
-0C82  00        nop
-0C83  00        nop
-0C84  00        nop
-0C85  00        nop
-0C86  00        nop
-0C87  00        nop
-0C88  00        nop
-0C89  00        nop
-0C8A  00        nop
-0C8B  00        nop
-0C8C  00        nop
-0C8D  00        nop
-0C8E  00        nop
-0C8F  00        nop
-0C90  00        nop
-0C91  00        nop
-0C92  00        nop
-0C93  00        nop
-0C94  00        nop
-0C95  00        nop
-0C96  00        nop
-0C97  00        nop
-0C98  00        nop
-0C99  00        nop
-0C9A  00        nop
-0C9B  00        nop
-0C9C  00        nop
-0C9D  00        nop
-0C9E  00        nop
-0C9F  00        nop
-0CA0  00        nop
-0CA1  00        nop
-0CA2  00        nop
-0CA3  00        nop
-0CA4  00        nop
-0CA5  00        nop
-0CA6  00        nop
-0CA7  00        nop
-0CA8  00        nop
-0CA9  00        nop
-0CAA  00        nop
-0CAB  00        nop
-0CAC  00        nop
-0CAD  00        nop
-0CAE  00        nop
-0CAF  00        nop
-0CB0  00        nop
-0CB1  00        nop
-0CB2  00        nop
-0CB3  00        nop
-0CB4  00        nop
-0CB5  00        nop
-0CB6  00        nop
-0CB7  00        nop
-0CB8  00        nop
-0CB9  00        nop
-0CBA  00        nop
-0CBB  00        nop
-0CBC  00        nop
-0CBD  00        nop
-0CBE  00        nop
-0CBF  00        nop
-0CC0  00        nop
-0CC1  00        nop
-0CC2  00        nop
-0CC3  00        nop
-0CC4  00        nop
-0CC5  00        nop
-0CC6  00        nop
-0CC7  00        nop
-0CC8  00        nop
-0CC9  00        nop
-0CCA  00        nop
-0CCB  00        nop
-0CCC  00        nop
-0CCD  00        nop
-0CCE  00        nop
-0CCF  00        nop
-0CD0  00        nop
-0CD1  00        nop
-0CD2  00        nop
-0CD3  00        nop
-0CD4  00        nop
-0CD5  00        nop
-0CD6  00        nop
-0CD7  00        nop
-0CD8  00        nop
-0CD9  00        nop
-0CDA  00        nop
-0CDB  00        nop
-0CDC  00        nop
-0CDD  00        nop
-0CDE  00        nop
-0CDF  00        nop
-0CE0  00        nop
-0CE1  00        nop
-0CE2  00        nop
-0CE3  00        nop
-0CE4  00        nop
-0CE5  00        nop
-0CE6  00        nop
-0CE7  00        nop
-0CE8  00        nop
-0CE9  00        nop
-0CEA  00        nop
-0CEB  00        nop
-0CEC  00        nop
-0CED  00        nop
-0CEE  00        nop
-0CEF  00        nop
-0CF0  00        nop
-0CF1  00        nop
-0CF2  00        nop
-0CF3  00        nop
-0CF4  00        nop
-0CF5  00        nop
-0CF6  00        nop
-0CF7  00        nop
-0CF8  00        nop
-0CF9  00        nop
-0CFA  00        nop
-0CFB  00        nop
-0CFC  00        nop
-0CFD  00        nop
-0CFE  00        nop
-0CFF  00        nop
-0D00  00        nop
-0D01  00        nop
-0D02  00        nop
-0D03  00        nop
-0D04  00        nop
-0D05  00        nop
-0D06  00        nop
-0D07  00        nop
-0D08  00        nop
-0D09  00        nop
-0D0A  00        nop
-0D0B  00        nop
-0D0C  00        nop
-0D0D  00        nop
-0D0E  00        nop
-0D0F  00        nop
-0D10  00        nop
-0D11  00        nop
-0D12  00        nop
-0D13  00        nop
-0D14  00        nop
-0D15  00        nop
-0D16  00        nop
-0D17  00        nop
-0D18  00        nop
-0D19  00        nop
-0D1A  00        nop
-0D1B  00        nop
-0D1C  00        nop
-0D1D  00        nop
-0D1E  00        nop
-0D1F  00        nop
-0D20  00        nop
-0D21  00        nop
-0D22  00        nop
-0D23  00        nop
-0D24  00        nop
-0D25  00        nop
-0D26  00        nop
-0D27  00        nop
-0D28  00        nop
-0D29  00        nop
-0D2A  00        nop
-0D2B  00        nop
-0D2C  00        nop
-0D2D  00        nop
-0D2E  00        nop
-0D2F  00        nop
-0D30  00        nop
-0D31  00        nop
-0D32  00        nop
-0D33  00        nop
-0D34  00        nop
-0D35  00        nop
-0D36  00        nop
-0D37  00        nop
-0D38  00        nop
-0D39  00        nop
-0D3A  00        nop
-0D3B  00        nop
-0D3C  00        nop
-0D3D  00        nop
-0D3E  00        nop
-0D3F  00        nop
-0D40  00        nop
-0D41  00        nop
-0D42  00        nop
-0D43  00        nop
-0D44  00        nop
-0D45  00        nop
-0D46  00        nop
-0D47  00        nop
-0D48  00        nop
-0D49  00        nop
-0D4A  00        nop
-0D4B  00        nop
-0D4C  00        nop
-0D4D  00        nop
-0D4E  00        nop
-0D4F  00        nop
-0D50  00        nop
-0D51  00        nop
-0D52  00        nop
-0D53  00        nop
-0D54  00        nop
-0D55  00        nop
-0D56  00        nop
-0D57  00        nop
-0D58  00        nop
-0D59  00        nop
-0D5A  00        nop
-0D5B  00        nop
-0D5C  00        nop
-0D5D  00        nop
-0D5E  00        nop
-0D5F  00        nop
-0D60  00        nop
-0D61  00        nop
-0D62  00        nop
-0D63  00        nop
-0D64  00        nop
-0D65  00        nop
-0D66  00        nop
-0D67  00        nop
-0D68  00        nop
-0D69  00        nop
-0D6A  00        nop
-0D6B  00        nop
-0D6C  00        nop
-0D6D  00        nop
-0D6E  00        nop
-0D6F  00        nop
-0D70  00        nop
-0D71  00        nop
-0D72  00        nop
-0D73  00        nop
-0D74  00        nop
-0D75  00        nop
-0D76  00        nop
-0D77  00        nop
-0D78  00        nop
-0D79  00        nop
-0D7A  00        nop
-0D7B  00        nop
-0D7C  00        nop
-0D7D  00        nop
-0D7E  00        nop
-0D7F  00        nop
-0D80  00        nop
-0D81  00        nop
-0D82  00        nop
-0D83  00        nop
-0D84  00        nop
-0D85  00        nop
-0D86  00        nop
-0D87  00        nop
-0D88  00        nop
-0D89  00        nop
-0D8A  00        nop
-0D8B  00        nop
-0D8C  00        nop
-0D8D  00        nop
-0D8E  00        nop
-0D8F  00        nop
-0D90  00        nop
-0D91  00        nop
-0D92  00        nop
-0D93  00        nop
-0D94  00        nop
-0D95  00        nop
-0D96  00        nop
-0D97  00        nop
-0D98  00        nop
-0D99  00        nop
-0D9A  00        nop
-0D9B  00        nop
-0D9C  00        nop
-0D9D  00        nop
-0D9E  00        nop
-0D9F  00        nop
-0DA0  00        nop
-0DA1  00        nop
-0DA2  00        nop
-0DA3  00        nop
-0DA4  00        nop
-0DA5  00        nop
-0DA6  00        nop
-0DA7  00        nop
-0DA8  00        nop
-0DA9  00        nop
-0DAA  00        nop
-0DAB  00        nop
-0DAC  00        nop
-0DAD  00        nop
-0DAE  00        nop
-0DAF  00        nop
-0DB0  00        nop
-0DB1  00        nop
-0DB2  00        nop
-0DB3  00        nop
-0DB4  00        nop
-0DB5  00        nop
-0DB6  00        nop
-0DB7  00        nop
-0DB8  00        nop
-0DB9  00        nop
-0DBA  00        nop
-0DBB  00        nop
-0DBC  00        nop
-0DBD  00        nop
-0DBE  00        nop
-0DBF  00        nop
-0DC0  00        nop
-0DC1  00        nop
-0DC2  00        nop
-0DC3  00        nop
-0DC4  00        nop
-0DC5  00        nop
-0DC6  00        nop
-0DC7  00        nop
-0DC8  00        nop
-0DC9  00        nop
-0DCA  00        nop
-0DCB  00        nop
-0DCC  00        nop
-0DCD  00        nop
-0DCE  00        nop
-0DCF  00        nop
-0DD0  00        nop
-0DD1  00        nop
-0DD2  00        nop
-0DD3  00        nop
-0DD4  00        nop
-0DD5  00        nop
-0DD6  00        nop
-0DD7  00        nop
-0DD8  00        nop
-0DD9  00        nop
-0DDA  00        nop
-0DDB  00        nop
-0DDC  00        nop
-0DDD  00        nop
-0DDE  00        nop
-0DDF  00        nop
-0DE0  00        nop
-0DE1  00        nop
-0DE2  00        nop
-0DE3  00        nop
-0DE4  00        nop
-0DE5  00        nop
-0DE6  00        nop
-0DE7  00        nop
-0DE8  00        nop
-0DE9  00        nop
-0DEA  00        nop
-0DEB  00        nop
-0DEC  00        nop
-0DED  00        nop
-0DEE  00        nop
-0DEF  00        nop
-0DF0  00        nop
-0DF1  00        nop
-0DF2  00        nop
-0DF3  00        nop
-0DF4  00        nop
-0DF5  00        nop
-0DF6  00        nop
-0DF7  00        nop
-0DF8  00        nop
-0DF9  00        nop
-0DFA  00        nop
-0DFB  00        nop
-0DFC  00        nop
-0DFD  00        nop
-0DFE  00        nop
-0DFF  00        nop
-0E00  00        nop
-0E01  00        nop
-0E02  00        nop
-0E03  00        nop
-0E04  00        nop
-0E05  00        nop
-0E06  00        nop
-0E07  00        nop
-0E08  00        nop
-0E09  00        nop
-0E0A  00        nop
-0E0B  00        nop
-0E0C  00        nop
-0E0D  00        nop
-0E0E  00        nop
-0E0F  00        nop
-0E10  00        nop
-0E11  00        nop
-0E12  00        nop
-0E13  00        nop
-0E14  00        nop
-0E15  00        nop
-0E16  00        nop
-0E17  00        nop
-0E18  00        nop
-0E19  00        nop
-0E1A  00        nop
-0E1B  00        nop
-0E1C  00        nop
-0E1D  00        nop
-0E1E  00        nop
-0E1F  00        nop
-0E20  00        nop
-0E21  00        nop
-0E22  00        nop
-0E23  00        nop
-0E24  00        nop
-0E25  00        nop
-0E26  00        nop
-0E27  00        nop
-0E28  00        nop
-0E29  00        nop
-0E2A  00        nop
-0E2B  00        nop
-0E2C  00        nop
-0E2D  00        nop
-0E2E  00        nop
-0E2F  00        nop
-0E30  00        nop
-0E31  00        nop
-0E32  00        nop
-0E33  00        nop
-0E34  00        nop
-0E35  00        nop
-0E36  00        nop
-0E37  00        nop
-0E38  00        nop
-0E39  00        nop
-0E3A  00        nop
-0E3B  00        nop
-0E3C  00        nop
-0E3D  00        nop
-0E3E  00        nop
-0E3F  00        nop
-0E40  00        nop
-0E41  00        nop
-0E42  00        nop
-0E43  00        nop
-0E44  00        nop
-0E45  00        nop
-0E46  00        nop
-0E47  00        nop
-0E48  00        nop
-0E49  00        nop
-0E4A  00        nop
-0E4B  00        nop
-0E4C  00        nop
-0E4D  00        nop
-0E4E  00        nop
-0E4F  00        nop
-0E50  00        nop
-0E51  00        nop
-0E52  00        nop
-0E53  00        nop
-0E54  00        nop
-0E55  00        nop
-0E56  00        nop
-0E57  00        nop
-0E58  00        nop
-0E59  00        nop
-0E5A  00        nop
-0E5B  00        nop
-0E5C  00        nop
-0E5D  00        nop
-0E5E  00        nop
-0E5F  00        nop
-0E60  00        nop
-0E61  00        nop
-0E62  00        nop
-0E63  00        nop
-0E64  00        nop
-0E65  00        nop
-0E66  00        nop
-0E67  00        nop
-0E68  00        nop
-0E69  00        nop
-0E6A  00        nop
-0E6B  00        nop
-0E6C  00        nop
-0E6D  00        nop
-0E6E  00        nop
-0E6F  00        nop
-0E70  00        nop
-0E71  00        nop
-0E72  00        nop
-0E73  00        nop
-0E74  00        nop
-0E75  00        nop
-0E76  00        nop
-0E77  00        nop
-0E78  00        nop
-0E79  00        nop
-0E7A  00        nop
-0E7B  00        nop
-0E7C  00        nop
-0E7D  00        nop
-0E7E  00        nop
-0E7F  00        nop
-0E80  00        nop
-0E81  00        nop
-0E82  00        nop
-0E83  00        nop
-0E84  00        nop
-0E85  00        nop
-0E86  00        nop
-0E87  00        nop
-0E88  00        nop
-0E89  00        nop
-0E8A  00        nop
-0E8B  00        nop
-0E8C  00        nop
-0E8D  00        nop
-0E8E  00        nop
-0E8F  00        nop
-0E90  00        nop
-0E91  00        nop
-0E92  00        nop
-0E93  00        nop
-0E94  00        nop
-0E95  00        nop
-0E96  00        nop
-0E97  00        nop
-0E98  00        nop
-0E99  00        nop
-0E9A  00        nop
-0E9B  00        nop
-0E9C  00        nop
-0E9D  00        nop
-0E9E  00        nop
-0E9F  00        nop
-0EA0  00        nop
-0EA1  00        nop
-0EA2  00        nop
-0EA3  00        nop
-0EA4  00        nop
-0EA5  00        nop
-0EA6  00        nop
-0EA7  00        nop
-0EA8  00        nop
-0EA9  00        nop
-0EAA  00        nop
-0EAB  00        nop
-0EAC  00        nop
-0EAD  00        nop
-0EAE  00        nop
-0EAF  00        nop
-0EB0  00        nop
-0EB1  00        nop
-0EB2  00        nop
-0EB3  00        nop
-0EB4  00        nop
-0EB5  00        nop
-0EB6  00        nop
-0EB7  00        nop
-0EB8  00        nop
-0EB9  00        nop
-0EBA  00        nop
-0EBB  00        nop
-0EBC  00        nop
-0EBD  00        nop
-0EBE  00        nop
-0EBF  00        nop
-0EC0  00        nop
-0EC1  00        nop
-0EC2  00        nop
-0EC3  00        nop
-0EC4  00        nop
-0EC5  00        nop
-0EC6  00        nop
-0EC7  00        nop
-0EC8  00        nop
-0EC9  00        nop
-0ECA  00        nop
-0ECB  00        nop
-0ECC  00        nop
-0ECD  00        nop
-0ECE  00        nop
-0ECF  00        nop
-0ED0  00        nop
-0ED1  00        nop
-0ED2  00        nop
-0ED3  00        nop
-0ED4  00        nop
-0ED5  00        nop
-0ED6  00        nop
-0ED7  00        nop
-0ED8  00        nop
-0ED9  00        nop
-0EDA  00        nop
-0EDB  00        nop
-0EDC  00        nop
-0EDD  00        nop
-0EDE  00        nop
-0EDF  00        nop
-0EE0  00        nop
-0EE1  00        nop
-0EE2  00        nop
-0EE3  00        nop
-0EE4  00        nop
-0EE5  00        nop
-0EE6  00        nop
-0EE7  00        nop
-0EE8  00        nop
-0EE9  00        nop
-0EEA  00        nop
-0EEB  00        nop
-0EEC  00        nop
-0EED  00        nop
-0EEE  00        nop
-0EEF  00        nop
-0EF0  00        nop
-0EF1  00        nop
-0EF2  00        nop
-0EF3  00        nop
-0EF4  00        nop
-0EF5  00        nop
-0EF6  00        nop
-0EF7  00        nop
-0EF8  00        nop
-0EF9  00        nop
-0EFA  00        nop
-0EFB  00        nop
-0EFC  00        nop
-0EFD  00        nop
-0EFE  00        nop
-0EFF  00        nop
-0F00  00        nop
-0F01  00        nop
-0F02  00        nop
-0F03  00        nop
-0F04  00        nop
-0F05  00        nop
-0F06  00        nop
-0F07  00        nop
-0F08  00        nop
-0F09  00        nop
-0F0A  00        nop
-0F0B  00        nop
-0F0C  00        nop
-0F0D  00        nop
-0F0E  00        nop
-0F0F  00        nop
-0F10  00        nop
-0F11  00        nop
-0F12  00        nop
-0F13  00        nop
-0F14  00        nop
-0F15  00        nop
-0F16  00        nop
-0F17  00        nop
-0F18  00        nop
-0F19  00        nop
-0F1A  00        nop
-0F1B  00        nop
-0F1C  00        nop
-0F1D  00        nop
-0F1E  00        nop
-0F1F  00        nop
-0F20  00        nop
-0F21  00        nop
-0F22  00        nop
-0F23  00        nop
-0F24  00        nop
-0F25  00        nop
-0F26  00        nop
-0F27  00        nop
-0F28  00        nop
-0F29  00        nop
-0F2A  00        nop
-0F2B  00        nop
-0F2C  00        nop
-0F2D  00        nop
-0F2E  00        nop
-0F2F  00        nop
-0F30  00        nop
-0F31  00        nop
-0F32  00        nop
-0F33  00        nop
-0F34  00        nop
-0F35  00        nop
-0F36  00        nop
-0F37  00        nop
-0F38  00        nop
-0F39  00        nop
-0F3A  00        nop
-0F3B  00        nop
-0F3C  00        nop
-0F3D  00        nop
-0F3E  00        nop
-0F3F  00        nop
-0F40  00        nop
-0F41  00        nop
-0F42  00        nop
-0F43  00        nop
-0F44  00        nop
-0F45  00        nop
-0F46  00        nop
-0F47  00        nop
-0F48  00        nop
-0F49  00        nop
-0F4A  00        nop
-0F4B  00        nop
-0F4C  00        nop
-0F4D  00        nop
-0F4E  00        nop
-0F4F  00        nop
-0F50  00        nop
-0F51  00        nop
-0F52  00        nop
-0F53  00        nop
-0F54  00        nop
-0F55  00        nop
-0F56  00        nop
-0F57  00        nop
-0F58  00        nop
-0F59  00        nop
-0F5A  00        nop
-0F5B  00        nop
-0F5C  00        nop
-0F5D  00        nop
-0F5E  00        nop
-0F5F  00        nop
-0F60  00        nop
-0F61  00        nop
-0F62  00        nop
-0F63  00        nop
-0F64  00        nop
-0F65  00        nop
-0F66  00        nop
-0F67  00        nop
-0F68  00        nop
-0F69  00        nop
-0F6A  00        nop
-0F6B  00        nop
-0F6C  00        nop
-0F6D  00        nop
-0F6E  00        nop
-0F6F  00        nop
-0F70  00        nop
-0F71  00        nop
-0F72  00        nop
-0F73  00        nop
-0F74  00        nop
-0F75  00        nop
-0F76  00        nop
-0F77  00        nop
-0F78  00        nop
-0F79  00        nop
-0F7A  00        nop
-0F7B  00        nop
-0F7C  00        nop
-0F7D  00        nop
-0F7E  00        nop
-0F7F  00        nop
-0F80  00        nop
-0F81  00        nop
-0F82  00        nop
-0F83  00        nop
-0F84  00        nop
-0F85  00        nop
-0F86  00        nop
-0F87  00        nop
-0F88  00        nop
-0F89  00        nop
-0F8A  00        nop
-0F8B  00        nop
-0F8C  00        nop
-0F8D  00        nop
-0F8E  00        nop
-0F8F  00        nop
-0F90  00        nop
-0F91  00        nop
-0F92  00        nop
-0F93  00        nop
-0F94  00        nop
-0F95  00        nop
-0F96  00        nop
-0F97  00        nop
-0F98  00        nop
-0F99  00        nop
-0F9A  00        nop
-0F9B  00        nop
-0F9C  00        nop
-0F9D  00        nop
-0F9E  00        nop
-0F9F  00        nop
-0FA0  00        nop
-0FA1  00        nop
-0FA2  00        nop
-0FA3  00        nop
-0FA4  00        nop
-0FA5  00        nop
-0FA6  00        nop
-0FA7  00        nop
-0FA8  00        nop
-0FA9  00        nop
-0FAA  00        nop
-0FAB  00        nop
-0FAC  00        nop
-0FAD  00        nop
-0FAE  00        nop
-0FAF  00        nop
-0FB0  00        nop
-0FB1  00        nop
-0FB2  00        nop
-0FB3  00        nop
-0FB4  00        nop
-0FB5  00        nop
-0FB6  00        nop
-0FB7  00        nop
-0FB8  00        nop
-0FB9  00        nop
-0FBA  00        nop
-0FBB  00        nop
-0FBC  00        nop
-0FBD  00        nop
-0FBE  00        nop
-0FBF  00        nop
-0FC0  00        nop
-0FC1  00        nop
-0FC2  00        nop
-0FC3  00        nop
-0FC4  00        nop
-0FC5  00        nop
-0FC6  00        nop
-0FC7  00        nop
-0FC8  00        nop
-0FC9  00        nop
-0FCA  00        nop
-0FCB  00        nop
-0FCC  00        nop
-0FCD  00        nop
-0FCE  00        nop
-0FCF  00        nop
-0FD0  00        nop
-0FD1  00        nop
-0FD2  00        nop
-0FD3  00        nop
-0FD4  00        nop
-0FD5  00        nop
-0FD6  00        nop
-0FD7  00        nop
-0FD8  00        nop
-0FD9  00        nop
-0FDA  00        nop
-0FDB  00        nop
-0FDC  00        nop
-0FDD  00        nop
-0FDE  00        nop
-0FDF  00        nop
-0FE0  00        nop
-0FE1  00        nop
-0FE2  00        nop
-0FE3  00        nop
-0FE4  00        nop
-0FE5  00        nop
-0FE6  00        nop
-0FE7  00        nop
-0FE8  00        nop
-0FE9  00        nop
-0FEA  00        nop
-0FEB  00        nop
-0FEC  00        nop
-0FED  00        nop
-0FEE  00        nop
-0FEF  00        nop
-0FF0  00        nop
-0FF1  00        nop
-0FF2  00        nop
-0FF3  00        nop
-0FF4  00        nop
-0FF5  00        nop
-0FF6  00        nop
-0FF7  00        nop
-0FF8  00        nop
-0FF9  00        nop
-0FFA  00        nop
-0FFB  00        nop
-0FFC  00        nop
-0FFD  00        nop
-0FFE  00        nop
-0FFF  00        nop
-1000  00        nop
-1001  00        nop
-1002  00        nop
-1003  00        nop
-1004  00        nop
-1005  00        nop
-1006  00        nop
-1007  00        nop
-1008  00        nop
-1009  00        nop
-100A  00        nop
-100B  00        nop
-100C  00        nop
-100D  00        nop
-100E  00        nop
-100F  00        nop
-1010  00        nop
-1011  00        nop
-1012  00        nop
-1013  00        nop
-1014  00        nop
-1015  00        nop
-1016  00        nop
-1017  00        nop
-1018  00        nop
-1019  00        nop
-101A  00        nop
-101B  00        nop
-101C  00        nop
-101D  00        nop
-101E  00        nop
-101F  00        nop
-1020  00        nop
-1021  00        nop
-1022  00        nop
-1023  00        nop
-1024  00        nop
-1025  00        nop
-1026  00        nop
-1027  00        nop
-1028  00        nop
-1029  00        nop
-102A  00        nop
-102B  00        nop
-102C  00        nop
-102D  00        nop
-102E  00        nop
-102F  00        nop
-1030  00        nop
-1031  00        nop
-1032  00        nop
-1033  00        nop
-1034  00        nop
-1035  00        nop
-1036  00        nop
-1037  00        nop
-1038  00        nop
-1039  00        nop
-103A  00        nop
-103B  00        nop
-103C  00        nop
-103D  00        nop
-103E  00        nop
-103F  00        nop
-1040  00        nop
-1041  00        nop
-1042  00        nop
-1043  00        nop
-1044  00        nop
-1045  00        nop
-1046  00        nop
-1047  00        nop
-1048  00        nop
-1049  00        nop
-104A  00        nop
-104B  00        nop
-104C  00        nop
-104D  00        nop
-104E  00        nop
-104F  00        nop
-1050  00        nop
-1051  00        nop
-1052  00        nop
-1053  00        nop
-1054  00        nop
-1055  00        nop
-1056  00        nop
-1057  00        nop
-1058  00        nop
-1059  00        nop
-105A  00        nop
-105B  00        nop
-105C  00        nop
-105D  00        nop
-105E  00        nop
-105F  00        nop
-1060  00        nop
-1061  00        nop
-1062  00        nop
-1063  00        nop
-1064  00        nop
-1065  00        nop
-1066  00        nop
-1067  00        nop
-1068  00        nop
-1069  00        nop
-106A  00        nop
-106B  00        nop
-106C  00        nop
-106D  00        nop
-106E  00        nop
-106F  00        nop
-1070  00        nop
-1071  00        nop
-1072  00        nop
-1073  00        nop
-1074  00        nop
-1075  00        nop
-1076  00        nop
-1077  00        nop
-1078  00        nop
-1079  00        nop
-107A  00        nop
-107B  00        nop
-107C  00        nop
-107D  00        nop
-107E  00        nop
-107F  00        nop
-1080  00        nop
-1081  00        nop
-1082  00        nop
-1083  00        nop
-1084  00        nop
-1085  00        nop
-1086  00        nop
-1087  00        nop
-1088  00        nop
-1089  00        nop
-108A  00        nop
-108B  00        nop
-108C  00        nop
-108D  00        nop
-108E  00        nop
-108F  00        nop
-1090  00        nop
-1091  00        nop
-1092  00        nop
-1093  00        nop
-1094  00        nop
-1095  00        nop
-1096  00        nop
-1097  00        nop
-1098  00        nop
-1099  00        nop
-109A  00        nop
-109B  00        nop
-109C  00        nop
-109D  00        nop
-109E  00        nop
-109F  00        nop
-10A0  00        nop
-10A1  00        nop
-10A2  00        nop
-10A3  00        nop
-10A4  00        nop
-10A5  00        nop
-10A6  00        nop
-10A7  00        nop
-10A8  00        nop
-10A9  00        nop
-10AA  00        nop
-10AB  00        nop
-10AC  00        nop
-10AD  00        nop
-10AE  00        nop
-10AF  00        nop
-10B0  00        nop
-10B1  00        nop
-10B2  00        nop
-10B3  00        nop
-10B4  00        nop
-10B5  00        nop
-10B6  00        nop
-10B7  00        nop
-10B8  00        nop
-10B9  00        nop
-10BA  00        nop
-10BB  00        nop
-10BC  00        nop
-10BD  00        nop
-10BE  00        nop
-10BF  00        nop
-10C0  00        nop
-10C1  00        nop
-10C2  00        nop
-10C3  00        nop
-10C4  00        nop
-10C5  00        nop
-10C6  00        nop
-10C7  00        nop
-10C8  00        nop
-10C9  00        nop
-10CA  00        nop
-10CB  00        nop
-10CC  00        nop
-10CD  00        nop
-10CE  00        nop
-10CF  00        nop
-10D0  00        nop
-10D1  00        nop
-10D2  00        nop
-10D3  00        nop
-10D4  00        nop
-10D5  00        nop
-10D6  00        nop
-10D7  00        nop
-10D8  00        nop
-10D9  00        nop
-10DA  00        nop
-10DB  00        nop
-10DC  00        nop
-10DD  00        nop
-10DE  00        nop
-10DF  00        nop
-10E0  00        nop
-10E1  00        nop
-10E2  00        nop
-10E3  00        nop
-10E4  00        nop
-10E5  00        nop
-10E6  00        nop
-10E7  00        nop
-10E8  00        nop
-10E9  00        nop
-10EA  00        nop
-10EB  00        nop
-10EC  00        nop
-10ED  00        nop
-10EE  00        nop
-10EF  00        nop
-10F0  00        nop
-10F1  00        nop
-10F2  00        nop
-10F3  00        nop
-10F4  00        nop
-10F5  00        nop
-10F6  00        nop
-10F7  00        nop
-10F8  00        nop
-10F9  00        nop
-10FA  00        nop
-10FB  00        nop
-10FC  00        nop
-10FD  00        nop
-10FE  00        nop
-10FF  00        nop
-1100  00        nop
-1101  00        nop
-1102  00        nop
-1103  00        nop
-1104  00        nop
-1105  00        nop
-1106  00        nop
-1107  00        nop
-1108  00        nop
-1109  00        nop
-110A  00        nop
-110B  00        nop
-110C  00        nop
-110D  00        nop
-110E  00        nop
-110F  00        nop
-1110  00        nop
-1111  00        nop
-1112  00        nop
-1113  00        nop
-1114  00        nop
-1115  00        nop
-1116  00        nop
-1117  00        nop
-1118  00        nop
-1119  00        nop
-111A  00        nop
-111B  00        nop
-111C  00        nop
-111D  00        nop
-111E  00        nop
-111F  00        nop
-1120  00        nop
-1121  00        nop
-1122  00        nop
-1123  00        nop
-1124  00        nop
-1125  00        nop
-1126  00        nop
-1127  00        nop
-1128  00        nop
-1129  00        nop
-112A  00        nop
-112B  00        nop
-112C  00        nop
-112D  00        nop
-112E  00        nop
-112F  00        nop
-1130  00        nop
-1131  00        nop
-1132  00        nop
-1133  00        nop
-1134  00        nop
-1135  00        nop
-1136  00        nop
-1137  00        nop
-1138  00        nop
-1139  00        nop
-113A  00        nop
-113B  00        nop
-113C  00        nop
-113D  00        nop
-113E  00        nop
-113F  00        nop
-1140  00        nop
-1141  00        nop
-1142  00        nop
-1143  00        nop
-1144  00        nop
-1145  00        nop
-1146  00        nop
-1147  00        nop
-1148  00        nop
-1149  00        nop
-114A  00        nop
-114B  00        nop
-114C  00        nop
-114D  00        nop
-114E  00        nop
-114F  00        nop
-1150  00        nop
-1151  00        nop
-1152  00        nop
-1153  00        nop
-1154  00        nop
-1155  00        nop
-1156  00        nop
-1157  00        nop
-1158  00        nop
-1159  00        nop
-115A  00        nop
-115B  00        nop
-115C  00        nop
-115D  00        nop
-115E  00        nop
-115F  00        nop
-1160  00        nop
-1161  00        nop
-1162  00        nop
-1163  00        nop
-1164  00        nop
-1165  00        nop
-1166  00        nop
-1167  00        nop
-1168  00        nop
-1169  00        nop
-116A  00        nop
-116B  00        nop
-116C  00        nop
-116D  00        nop
-116E  00        nop
-116F  00        nop
-1170  00        nop
-1171  00        nop
-1172  00        nop
-1173  00        nop
-1174  00        nop
-1175  00        nop
-1176  00        nop
-1177  00        nop
-1178  00        nop
-1179  00        nop
-117A  00        nop
-117B  00        nop
-117C  00        nop
-117D  00        nop
-117E  00        nop
-117F  00        nop
-1180  00        nop
-1181  00        nop
-1182  00        nop
-1183  00        nop
-1184  00        nop
-1185  00        nop
-1186  00        nop
-1187  00        nop
-1188  00        nop
-1189  00        nop
-118A  00        nop
-118B  00        nop
-118C  00        nop
-118D  00        nop
-118E  00        nop
-118F  00        nop
-1190  00        nop
-1191  00        nop
-1192  00        nop
-1193  00        nop
-1194  00        nop
-1195  00        nop
-1196  00        nop
-1197  00        nop
-1198  00        nop
-1199  00        nop
-119A  00        nop
-119B  00        nop
-119C  00        nop
-119D  00        nop
-119E  00        nop
-119F  00        nop
-11A0  00        nop
-11A1  00        nop
-11A2  00        nop
-11A3  00        nop
-11A4  00        nop
-11A5  00        nop
-11A6  00        nop
-11A7  00        nop
-11A8  00        nop
-11A9  00        nop
-11AA  00        nop
-11AB  00        nop
-11AC  00        nop
-11AD  00        nop
-11AE  00        nop
-11AF  00        nop
-11B0  00        nop
-11B1  00        nop
-11B2  00        nop
-11B3  00        nop
-11B4  00        nop
-11B5  00        nop
-11B6  00        nop
-11B7  00        nop
-11B8  00        nop
-11B9  00        nop
-11BA  00        nop
-11BB  00        nop
-11BC  00        nop
-11BD  00        nop
-11BE  00        nop
-11BF  00        nop
-11C0  00        nop
-11C1  00        nop
-11C2  00        nop
-11C3  00        nop
-11C4  00        nop
-11C5  00        nop
-11C6  00        nop
-11C7  00        nop
-11C8  00        nop
-11C9  00        nop
-11CA  00        nop
-11CB  00        nop
-11CC  00        nop
-11CD  00        nop
-11CE  00        nop
-11CF  00        nop
-11D0  00        nop
-11D1  00        nop
-11D2  00        nop
-11D3  00        nop
-11D4  00        nop
-11D5  00        nop
-11D6  00        nop
-11D7  00        nop
-11D8  00        nop
-11D9  00        nop
-11DA  00        nop
-11DB  00        nop
-11DC  00        nop
-11DD  00        nop
-11DE  00        nop
-11DF  00        nop
-11E0  00        nop
-11E1  00        nop
-11E2  00        nop
-11E3  00        nop
-11E4  00        nop
-11E5  00        nop
-11E6  00        nop
-11E7  00        nop
-11E8  00        nop
-11E9  00        nop
-11EA  00        nop
-11EB  00        nop
-11EC  00        nop
-11ED  00        nop
-11EE  00        nop
-11EF  00        nop
-11F0  00        nop
-11F1  00        nop
-11F2  00        nop
-11F3  00        nop
-11F4  00        nop
-11F5  00        nop
-11F6  00        nop
-11F7  00        nop
-11F8  00        nop
-11F9  00        nop
-11FA  00        nop
-11FB  00        nop
-11FC  00        nop
-11FD  00        nop
-11FE  00        nop
-11FF  00        nop
-1200  00        nop
-1201  00        nop
-1202  00        nop
-1203  00        nop
-1204  00        nop
-1205  00        nop
-1206  00        nop
-1207  00        nop
-1208  00        nop
-1209  00        nop
-120A  00        nop
-120B  00        nop
-120C  00        nop
-120D  00        nop
-120E  00        nop
-120F  00        nop
-1210  00        nop
-1211  00        nop
-1212  00        nop
-1213  00        nop
-1214  00        nop
-1215  00        nop
-1216  00        nop
-1217  00        nop
-1218  00        nop
-1219  00        nop
-121A  00        nop
-121B  00        nop
-121C  00        nop
-121D  00        nop
-121E  00        nop
-121F  00        nop
-1220  00        nop
-1221  00        nop
-1222  00        nop
-1223  00        nop
-1224  00        nop
-1225  00        nop
-1226  00        nop
-1227  00        nop
-1228  00        nop
-1229  00        nop
-122A  00        nop
-122B  00        nop
-122C  00        nop
-122D  00        nop
-122E  00        nop
-122F  00        nop
-1230  00        nop
-1231  00        nop
-1232  00        nop
-1233  00        nop
-1234  00        nop
-1235  00        nop
-1236  00        nop
-1237  00        nop
-1238  00        nop
-1239  00        nop
-123A  00        nop
-123B  00        nop
-123C  00        nop
-123D  00        nop
-123E  00        nop
-123F  00        nop
-1240  00        nop
-1241  00        nop
-1242  00        nop
-1243  00        nop
-1244  00        nop
-1245  00        nop
-1246  00        nop
-1247  00        nop
-1248  00        nop
-1249  00        nop
-124A  00        nop
-124B  00        nop
-124C  00        nop
-124D  00        nop
-124E  00        nop
-124F  00        nop
-1250  00        nop
-1251  00        nop
-1252  00        nop
-1253  00        nop
-1254  00        nop
-1255  00        nop
-1256  00        nop
-1257  00        nop
-1258  00        nop
-1259  00        nop
-125A  00        nop
-125B  00        nop
-125C  00        nop
-125D  00        nop
-125E  00        nop
-125F  00        nop
-1260  00        nop
-1261  00        nop
-1262  00        nop
-1263  00        nop
-1264  00        nop
-1265  00        nop
-1266  00        nop
-1267  00        nop
-1268  00        nop
-1269  00        nop
-126A  00        nop
-126B  00        nop
-126C  00        nop
-126D  00        nop
-126E  00        nop
-126F  00        nop
-1270  00        nop
-1271  00        nop
-1272  00        nop
-1273  00        nop
-1274  00        nop
-1275  00        nop
-1276  00        nop
-1277  00        nop
-1278  00        nop
-1279  00        nop
-127A  00        nop
-127B  00        nop
-127C  00        nop
-127D  00        nop
-127E  00        nop
-127F  00        nop
-1280  00        nop
-1281  00        nop
-1282  00        nop
-1283  00        nop
-1284  00        nop
-1285  00        nop
-1286  00        nop
-1287  00        nop
-1288  00        nop
-1289  00        nop
-128A  00        nop
-128B  00        nop
-128C  00        nop
-128D  00        nop
-128E  00        nop
-128F  00        nop
-1290  00        nop
-1291  00        nop
-1292  00        nop
-1293  00        nop
-1294  00        nop
-1295  00        nop
-1296  00        nop
-1297  00        nop
-1298  00        nop
-1299  00        nop
-129A  00        nop
-129B  00        nop
-129C  00        nop
-129D  00        nop
-129E  00        nop
-129F  00        nop
-12A0  00        nop
-12A1  00        nop
-12A2  00        nop
-12A3  00        nop
-12A4  00        nop
-12A5  00        nop
-12A6  00        nop
-12A7  00        nop
-12A8  00        nop
-12A9  00        nop
-12AA  00        nop
-12AB  00        nop
-12AC  00        nop
-12AD  00        nop
-12AE  00        nop
-12AF  00        nop
-12B0  00        nop
-12B1  00        nop
-12B2  00        nop
-12B3  00        nop
-12B4  00        nop
-12B5  00        nop
-12B6  00        nop
-12B7  00        nop
-12B8  00        nop
-12B9  00        nop
-12BA  00        nop
-12BB  00        nop
-12BC  00        nop
-12BD  00        nop
-12BE  00        nop
-12BF  00        nop
-12C0  00        nop
-12C1  00        nop
-12C2  00        nop
-12C3  00        nop
-12C4  00        nop
-12C5  00        nop
-12C6  00        nop
-12C7  00        nop
-12C8  00        nop
-12C9  00        nop
-12CA  00        nop
-12CB  00        nop
-12CC  00        nop
-12CD  00        nop
-12CE  00        nop
-12CF  00        nop
-12D0  00        nop
-12D1  00        nop
-12D2  00        nop
-12D3  00        nop
-12D4  00        nop
-12D5  00        nop
-12D6  00        nop
-12D7  00        nop
-12D8  00        nop
-12D9  00        nop
-12DA  00        nop
-12DB  00        nop
-12DC  00        nop
-12DD  00        nop
-12DE  00        nop
-12DF  00        nop
-12E0  00        nop
-12E1  00        nop
-12E2  00        nop
-12E3  00        nop
-12E4  00        nop
-12E5  00        nop
-12E6  00        nop
-12E7  00        nop
-12E8  00        nop
-12E9  00        nop
-12EA  00        nop
-12EB  00        nop
-12EC  00        nop
-12ED  00        nop
-12EE  00        nop
-12EF  00        nop
-12F0  00        nop
-12F1  00        nop
-12F2  00        nop
-12F3  00        nop
-12F4  00        nop
-12F5  00        nop
-12F6  00        nop
-12F7  00        nop
-12F8  00        nop
-12F9  00        nop
-12FA  00        nop
-12FB  00        nop
-12FC  00        nop
-12FD  00        nop
-12FE  00        nop
-12FF  00        nop
-1300  00        nop
-1301  00        nop
-1302  00        nop
-1303  00        nop
-1304  00        nop
-1305  00        nop
-1306  00        nop
-1307  00        nop
-1308  00        nop
-1309  00        nop
-130A  00        nop
-130B  00        nop
-130C  00        nop
-130D  00        nop
-130E  00        nop
-130F  00        nop
-1310  00        nop
-1311  00        nop
-1312  00        nop
-1313  00        nop
-1314  00        nop
-1315  00        nop
-1316  00        nop
-1317  00        nop
-1318  00        nop
-1319  00        nop
-131A  00        nop
-131B  00        nop
-131C  00        nop
-131D  00        nop
-131E  00        nop
-131F  00        nop
-1320  00        nop
-1321  00        nop
-1322  00        nop
-1323  00        nop
-1324  00        nop
-1325  00        nop
-1326  00        nop
-1327  00        nop
-1328  00        nop
-1329  00        nop
-132A  00        nop
-132B  00        nop
-132C  00        nop
-132D  00        nop
-132E  00        nop
-132F  00        nop
-1330  00        nop
-1331  00        nop
-1332  00        nop
-1333  00        nop
-1334  00        nop
-1335  00        nop
-1336  00        nop
-1337  00        nop
-1338  00        nop
-1339  00        nop
-133A  00        nop
-133B  00        nop
-133C  00        nop
-133D  00        nop
-133E  00        nop
-133F  00        nop
-1340  00        nop
-1341  00        nop
-1342  00        nop
-1343  00        nop
-1344  00        nop
-1345  00        nop
-1346  00        nop
-1347  00        nop
-1348  00        nop
-1349  00        nop
-134A  00        nop
-134B  00        nop
-134C  00        nop
-134D  00        nop
-134E  00        nop
-134F  00        nop
-1350  00        nop
-1351  00        nop
-1352  00        nop
-1353  00        nop
-1354  00        nop
-1355  00        nop
-1356  00        nop
-1357  00        nop
-1358  00        nop
-1359  00        nop
-135A  00        nop
-135B  00        nop
-135C  00        nop
-135D  00        nop
-135E  00        nop
-135F  00        nop
-1360  00        nop
-1361  00        nop
-1362  00        nop
-1363  00        nop
-1364  00        nop
-1365  00        nop
-1366  00        nop
-1367  00        nop
-1368  00        nop
-1369  00        nop
-136A  00        nop
-136B  00        nop
-136C  00        nop
-136D  00        nop
-136E  00        nop
-136F  00        nop
-1370  00        nop
-1371  00        nop
-1372  00        nop
-1373  00        nop
-1374  00        nop
-1375  00        nop
-1376  00        nop
-1377  00        nop
-1378  00        nop
-1379  00        nop
-137A  00        nop
-137B  00        nop
-137C  00        nop
-137D  00        nop
-137E  00        nop
-137F  00        nop
-1380  00        nop
-1381  00        nop
-1382  00        nop
-1383  00        nop
-1384  00        nop
-1385  00        nop
-1386  00        nop
-1387  00        nop
-1388  00        nop
-1389  00        nop
-138A  00        nop
-138B  00        nop
-138C  00        nop
-138D  00        nop
-138E  00        nop
-138F  00        nop
-1390  00        nop
-1391  00        nop
-1392  00        nop
-1393  00        nop
-1394  00        nop
-1395  00        nop
-1396  00        nop
-1397  00        nop
-1398  00        nop
-1399  00        nop
-139A  00        nop
-139B  00        nop
-139C  00        nop
-139D  00        nop
-139E  00        nop
-139F  00        nop
-13A0  00        nop
-13A1  00        nop
-13A2  00        nop
-13A3  00        nop
-13A4  00        nop
-13A5  00        nop
-13A6  00        nop
-13A7  00        nop
-13A8  00        nop
-13A9  00        nop
-13AA  00        nop
-13AB  00        nop
-13AC  00        nop
-13AD  00        nop
-13AE  00        nop
-13AF  00        nop
-13B0  00        nop
-13B1  00        nop
-13B2  00        nop
-13B3  00        nop
-13B4  00        nop
-13B5  00        nop
-13B6  00        nop
-13B7  00        nop
-13B8  00        nop
-13B9  00        nop
-13BA  00        nop
-13BB  00        nop
-13BC  00        nop
-13BD  00        nop
-13BE  00        nop
-13BF  00        nop
-13C0  00        nop
-13C1  00        nop
-13C2  00        nop
-13C3  00        nop
-13C4  00        nop
-13C5  00        nop
-13C6  00        nop
-13C7  00        nop
-13C8  00        nop
-13C9  00        nop
-13CA  00        nop
-13CB  00        nop
-13CC  00        nop
-13CD  00        nop
-13CE  00        nop
-13CF  00        nop
-13D0  00        nop
-13D1  00        nop
-13D2  00        nop
-13D3  00        nop
-13D4  00        nop
-13D5  00        nop
-13D6  00        nop
-13D7  00        nop
-13D8  00        nop
-13D9  00        nop
-13DA  00        nop
-13DB  00        nop
-13DC  00        nop
-13DD  00        nop
-13DE  00        nop
-13DF  00        nop
-13E0  00        nop
-13E1  00        nop
-13E2  00        nop
-13E3  00        nop
-13E4  00        nop
-13E5  00        nop
-13E6  00        nop
-13E7  00        nop
-13E8  00        nop
-13E9  00        nop
-13EA  00        nop
-13EB  00        nop
-13EC  00        nop
-13ED  00        nop
-13EE  00        nop
-13EF  00        nop
-13F0  00        nop
-13F1  00        nop
-13F2  00        nop
-13F3  00        nop
-13F4  00        nop
-13F5  00        nop
-13F6  00        nop
-13F7  00        nop
-13F8  00        nop
-13F9  00        nop
-13FA  00        nop
-13FB  00        nop
-13FC  00        nop
-13FD  00        nop
-13FE  00        nop
-13FF  00        nop
+0BF7  13        
+0BF8  00        
+0BF9  08        
+0BFA  13        
+0BFB  0E 26     
+0BFD  02        
+0BFE  0E 0F     
+0C00  00        
+0C01  00        
+0C02  00        
+0C03  00        
+0C04  00        
+0C05  00        
+0C06  00        
+0C07  00        
+0C08  00        
+0C09  00        
+0C0A  00        
+0C0B  00        
+0C0C  00        
+0C0D  00        
+0C0E  00        
+0C0F  00        
+0C10  00        
+0C11  00        
+0C12  00        
+0C13  00        
+0C14  00        
+0C15  00        
+0C16  00        
+0C17  00        
+0C18  00        
+0C19  00        
+0C1A  00        
+0C1B  00        
+0C1C  00        
+0C1D  00        
+0C1E  00        
+0C1F  00        
+0C20  00        
+0C21  00        
+0C22  00        
+0C23  00        
+0C24  00        
+0C25  00        
+0C26  00        
+0C27  00        
+0C28  00        
+0C29  00        
+0C2A  00        
+0C2B  00        
+0C2C  00        
+0C2D  00        
+0C2E  00        
+0C2F  00        
+0C30  00        
+0C31  00        
+0C32  00        
+0C33  00        
+0C34  00        
+0C35  00        
+0C36  00        
+0C37  00        
+0C38  00        
+0C39  00        
+0C3A  00        
+0C3B  00        
+0C3C  00        
+0C3D  00        
+0C3E  00        
+0C3F  00        
+0C40  00        
+0C41  00        
+0C42  00        
+0C43  00        
+0C44  00        
+0C45  00        
+0C46  00        
+0C47  00        
+0C48  00        
+0C49  00        
+0C4A  00        
+0C4B  00        
+0C4C  00        
+0C4D  00        
+0C4E  00        
+0C4F  00        
+0C50  00        
+0C51  00        
+0C52  00        
+0C53  00        
+0C54  00        
+0C55  00        
+0C56  00        
+0C57  00        
+0C58  00        
+0C59  00        
+0C5A  00        
+0C5B  00        
+0C5C  00        
+0C5D  00        
+0C5E  00        
+0C5F  00        
+0C60  00        
+0C61  00        
+0C62  00        
+0C63  00        
+0C64  00        
+0C65  00        
+0C66  00        
+0C67  00        
+0C68  00        
+0C69  00        
+0C6A  00        
+0C6B  00        
+0C6C  00        
+0C6D  00        
+0C6E  00        
+0C6F  00        
+0C70  00        
+0C71  00        
+0C72  00        
+0C73  00        
+0C74  00        
+0C75  00        
+0C76  00        
+0C77  00        
+0C78  00        
+0C79  00        
+0C7A  00        
+0C7B  00        
+0C7C  00        
+0C7D  00        
+0C7E  00        
+0C7F  00        
+0C80  00        
+0C81  00        
+0C82  00        
+0C83  00        
+0C84  00        
+0C85  00        
+0C86  00        
+0C87  00        
+0C88  00        
+0C89  00        
+0C8A  00        
+0C8B  00        
+0C8C  00        
+0C8D  00        
+0C8E  00        
+0C8F  00        
+0C90  00        
+0C91  00        
+0C92  00        
+0C93  00        
+0C94  00        
+0C95  00        
+0C96  00        
+0C97  00        
+0C98  00        
+0C99  00        
+0C9A  00        
+0C9B  00        
+0C9C  00        
+0C9D  00        
+0C9E  00        
+0C9F  00        
+0CA0  00        
+0CA1  00        
+0CA2  00        
+0CA3  00        
+0CA4  00        
+0CA5  00        
+0CA6  00        
+0CA7  00        
+0CA8  00        
+0CA9  00        
+0CAA  00        
+0CAB  00        
+0CAC  00        
+0CAD  00        
+0CAE  00        
+0CAF  00        
+0CB0  00        
+0CB1  00        
+0CB2  00        
+0CB3  00        
+0CB4  00        
+0CB5  00        
+0CB6  00        
+0CB7  00        
+0CB8  00        
+0CB9  00        
+0CBA  00        
+0CBB  00        
+0CBC  00        
+0CBD  00        
+0CBE  00        
+0CBF  00        
+0CC0  00        
+0CC1  00        
+0CC2  00        
+0CC3  00        
+0CC4  00        
+0CC5  00        
+0CC6  00        
+0CC7  00        
+0CC8  00        
+0CC9  00        
+0CCA  00        
+0CCB  00        
+0CCC  00        
+0CCD  00        
+0CCE  00        
+0CCF  00        
+0CD0  00        
+0CD1  00        
+0CD2  00        
+0CD3  00        
+0CD4  00        
+0CD5  00        
+0CD6  00        
+0CD7  00        
+0CD8  00        
+0CD9  00        
+0CDA  00        
+0CDB  00        
+0CDC  00        
+0CDD  00        
+0CDE  00        
+0CDF  00        
+0CE0  00        
+0CE1  00        
+0CE2  00        
+0CE3  00        
+0CE4  00        
+0CE5  00        
+0CE6  00        
+0CE7  00        
+0CE8  00        
+0CE9  00        
+0CEA  00        
+0CEB  00        
+0CEC  00        
+0CED  00        
+0CEE  00        
+0CEF  00        
+0CF0  00        
+0CF1  00        
+0CF2  00        
+0CF3  00        
+0CF4  00        
+0CF5  00        
+0CF6  00        
+0CF7  00        
+0CF8  00        
+0CF9  00        
+0CFA  00        
+0CFB  00        
+0CFC  00        
+0CFD  00        
+0CFE  00        
+0CFF  00        
+0D00  00        
+0D01  00        
+0D02  00        
+0D03  00        
+0D04  00        
+0D05  00        
+0D06  00        
+0D07  00        
+0D08  00        
+0D09  00        
+0D0A  00        
+0D0B  00        
+0D0C  00        
+0D0D  00        
+0D0E  00        
+0D0F  00        
+0D10  00        
+0D11  00        
+0D12  00        
+0D13  00        
+0D14  00        
+0D15  00        
+0D16  00        
+0D17  00        
+0D18  00        
+0D19  00        
+0D1A  00        
+0D1B  00        
+0D1C  00        
+0D1D  00        
+0D1E  00        
+0D1F  00        
+0D20  00        
+0D21  00        
+0D22  00        
+0D23  00        
+0D24  00        
+0D25  00        
+0D26  00        
+0D27  00        
+0D28  00        
+0D29  00        
+0D2A  00        
+0D2B  00        
+0D2C  00        
+0D2D  00        
+0D2E  00        
+0D2F  00        
+0D30  00        
+0D31  00        
+0D32  00        
+0D33  00        
+0D34  00        
+0D35  00        
+0D36  00        
+0D37  00        
+0D38  00        
+0D39  00        
+0D3A  00        
+0D3B  00        
+0D3C  00        
+0D3D  00        
+0D3E  00        
+0D3F  00        
+0D40  00        
+0D41  00        
+0D42  00        
+0D43  00        
+0D44  00        
+0D45  00        
+0D46  00        
+0D47  00        
+0D48  00        
+0D49  00        
+0D4A  00        
+0D4B  00        
+0D4C  00        
+0D4D  00        
+0D4E  00        
+0D4F  00        
+0D50  00        
+0D51  00        
+0D52  00        
+0D53  00        
+0D54  00        
+0D55  00        
+0D56  00        
+0D57  00        
+0D58  00        
+0D59  00        
+0D5A  00        
+0D5B  00        
+0D5C  00        
+0D5D  00        
+0D5E  00        
+0D5F  00        
+0D60  00        
+0D61  00        
+0D62  00        
+0D63  00        
+0D64  00        
+0D65  00        
+0D66  00        
+0D67  00        
+0D68  00        
+0D69  00        
+0D6A  00        
+0D6B  00        
+0D6C  00        
+0D6D  00        
+0D6E  00        
+0D6F  00        
+0D70  00        
+0D71  00        
+0D72  00        
+0D73  00        
+0D74  00        
+0D75  00        
+0D76  00        
+0D77  00        
+0D78  00        
+0D79  00        
+0D7A  00        
+0D7B  00        
+0D7C  00        
+0D7D  00        
+0D7E  00        
+0D7F  00        
+0D80  00        
+0D81  00        
+0D82  00        
+0D83  00        
+0D84  00        
+0D85  00        
+0D86  00        
+0D87  00        
+0D88  00        
+0D89  00        
+0D8A  00        
+0D8B  00        
+0D8C  00        
+0D8D  00        
+0D8E  00        
+0D8F  00        
+0D90  00        
+0D91  00        
+0D92  00        
+0D93  00        
+0D94  00        
+0D95  00        
+0D96  00        
+0D97  00        
+0D98  00        
+0D99  00        
+0D9A  00        
+0D9B  00        
+0D9C  00        
+0D9D  00        
+0D9E  00        
+0D9F  00        
+0DA0  00        
+0DA1  00        
+0DA2  00        
+0DA3  00        
+0DA4  00        
+0DA5  00        
+0DA6  00        
+0DA7  00        
+0DA8  00        
+0DA9  00        
+0DAA  00        
+0DAB  00        
+0DAC  00        
+0DAD  00        
+0DAE  00        
+0DAF  00        
+0DB0  00        
+0DB1  00        
+0DB2  00        
+0DB3  00        
+0DB4  00        
+0DB5  00        
+0DB6  00        
+0DB7  00        
+0DB8  00        
+0DB9  00        
+0DBA  00        
+0DBB  00        
+0DBC  00        
+0DBD  00        
+0DBE  00        
+0DBF  00        
+0DC0  00        
+0DC1  00        
+0DC2  00        
+0DC3  00        
+0DC4  00        
+0DC5  00        
+0DC6  00        
+0DC7  00        
+0DC8  00        
+0DC9  00        
+0DCA  00        
+0DCB  00        
+0DCC  00        
+0DCD  00        
+0DCE  00        
+0DCF  00        
+0DD0  00        
+0DD1  00        
+0DD2  00        
+0DD3  00        
+0DD4  00        
+0DD5  00        
+0DD6  00        
+0DD7  00        
+0DD8  00        
+0DD9  00        
+0DDA  00        
+0DDB  00        
+0DDC  00        
+0DDD  00        
+0DDE  00        
+0DDF  00        
+0DE0  00        
+0DE1  00        
+0DE2  00        
+0DE3  00        
+0DE4  00        
+0DE5  00        
+0DE6  00        
+0DE7  00        
+0DE8  00        
+0DE9  00        
+0DEA  00        
+0DEB  00        
+0DEC  00        
+0DED  00        
+0DEE  00        
+0DEF  00        
+0DF0  00        
+0DF1  00        
+0DF2  00        
+0DF3  00        
+0DF4  00        
+0DF5  00        
+0DF6  00        
+0DF7  00        
+0DF8  00        
+0DF9  00        
+0DFA  00        
+0DFB  00        
+0DFC  00        
+0DFD  00        
+0DFE  00        
+0DFF  00        
+0E00  00        
+0E01  00        
+0E02  00        
+0E03  00        
+0E04  00        
+0E05  00        
+0E06  00        
+0E07  00        
+0E08  00        
+0E09  00        
+0E0A  00        
+0E0B  00        
+0E0C  00        
+0E0D  00        
+0E0E  00        
+0E0F  00        
+0E10  00        
+0E11  00        
+0E12  00        
+0E13  00        
+0E14  00        
+0E15  00        
+0E16  00        
+0E17  00        
+0E18  00        
+0E19  00        
+0E1A  00        
+0E1B  00        
+0E1C  00        
+0E1D  00        
+0E1E  00        
+0E1F  00        
+0E20  00        
+0E21  00        
+0E22  00        
+0E23  00        
+0E24  00        
+0E25  00        
+0E26  00        
+0E27  00        
+0E28  00        
+0E29  00        
+0E2A  00        
+0E2B  00        
+0E2C  00        
+0E2D  00        
+0E2E  00        
+0E2F  00        
+0E30  00        
+0E31  00        
+0E32  00        
+0E33  00        
+0E34  00        
+0E35  00        
+0E36  00        
+0E37  00        
+0E38  00        
+0E39  00        
+0E3A  00        
+0E3B  00        
+0E3C  00        
+0E3D  00        
+0E3E  00        
+0E3F  00        
+0E40  00        
+0E41  00        
+0E42  00        
+0E43  00        
+0E44  00        
+0E45  00        
+0E46  00        
+0E47  00        
+0E48  00        
+0E49  00        
+0E4A  00        
+0E4B  00        
+0E4C  00        
+0E4D  00        
+0E4E  00        
+0E4F  00        
+0E50  00        
+0E51  00        
+0E52  00        
+0E53  00        
+0E54  00        
+0E55  00        
+0E56  00        
+0E57  00        
+0E58  00        
+0E59  00        
+0E5A  00        
+0E5B  00        
+0E5C  00        
+0E5D  00        
+0E5E  00        
+0E5F  00        
+0E60  00        
+0E61  00        
+0E62  00        
+0E63  00        
+0E64  00        
+0E65  00        
+0E66  00        
+0E67  00        
+0E68  00        
+0E69  00        
+0E6A  00        
+0E6B  00        
+0E6C  00        
+0E6D  00        
+0E6E  00        
+0E6F  00        
+0E70  00        
+0E71  00        
+0E72  00        
+0E73  00        
+0E74  00        
+0E75  00        
+0E76  00        
+0E77  00        
+0E78  00        
+0E79  00        
+0E7A  00        
+0E7B  00        
+0E7C  00        
+0E7D  00        
+0E7E  00        
+0E7F  00        
+0E80  00        
+0E81  00        
+0E82  00        
+0E83  00        
+0E84  00        
+0E85  00        
+0E86  00        
+0E87  00        
+0E88  00        
+0E89  00        
+0E8A  00        
+0E8B  00        
+0E8C  00        
+0E8D  00        
+0E8E  00        
+0E8F  00        
+0E90  00        
+0E91  00        
+0E92  00        
+0E93  00        
+0E94  00        
+0E95  00        
+0E96  00        
+0E97  00        
+0E98  00        
+0E99  00        
+0E9A  00        
+0E9B  00        
+0E9C  00        
+0E9D  00        
+0E9E  00        
+0E9F  00        
+0EA0  00        
+0EA1  00        
+0EA2  00        
+0EA3  00        
+0EA4  00        
+0EA5  00        
+0EA6  00        
+0EA7  00        
+0EA8  00        
+0EA9  00        
+0EAA  00        
+0EAB  00        
+0EAC  00        
+0EAD  00        
+0EAE  00        
+0EAF  00        
+0EB0  00        
+0EB1  00        
+0EB2  00        
+0EB3  00        
+0EB4  00        
+0EB5  00        
+0EB6  00        
+0EB7  00        
+0EB8  00        
+0EB9  00        
+0EBA  00        
+0EBB  00        
+0EBC  00        
+0EBD  00        
+0EBE  00        
+0EBF  00        
+0EC0  00        
+0EC1  00        
+0EC2  00        
+0EC3  00        
+0EC4  00        
+0EC5  00        
+0EC6  00        
+0EC7  00        
+0EC8  00        
+0EC9  00        
+0ECA  00        
+0ECB  00        
+0ECC  00        
+0ECD  00        
+0ECE  00        
+0ECF  00        
+0ED0  00        
+0ED1  00        
+0ED2  00        
+0ED3  00        
+0ED4  00        
+0ED5  00        
+0ED6  00        
+0ED7  00        
+0ED8  00        
+0ED9  00        
+0EDA  00        
+0EDB  00        
+0EDC  00        
+0EDD  00        
+0EDE  00        
+0EDF  00        
+0EE0  00        
+0EE1  00        
+0EE2  00        
+0EE3  00        
+0EE4  00        
+0EE5  00        
+0EE6  00        
+0EE7  00        
+0EE8  00        
+0EE9  00        
+0EEA  00        
+0EEB  00        
+0EEC  00        
+0EED  00        
+0EEE  00        
+0EEF  00        
+0EF0  00        
+0EF1  00        
+0EF2  00        
+0EF3  00        
+0EF4  00        
+0EF5  00        
+0EF6  00        
+0EF7  00        
+0EF8  00        
+0EF9  00        
+0EFA  00        
+0EFB  00        
+0EFC  00        
+0EFD  00        
+0EFE  00        
+0EFF  00        
+0F00  00        
+0F01  00        
+0F02  00        
+0F03  00        
+0F04  00        
+0F05  00        
+0F06  00        
+0F07  00        
+0F08  00        
+0F09  00        
+0F0A  00        
+0F0B  00        
+0F0C  00        
+0F0D  00        
+0F0E  00        
+0F0F  00        
+0F10  00        
+0F11  00        
+0F12  00        
+0F13  00        
+0F14  00        
+0F15  00        
+0F16  00        
+0F17  00        
+0F18  00        
+0F19  00        
+0F1A  00        
+0F1B  00        
+0F1C  00        
+0F1D  00        
+0F1E  00        
+0F1F  00        
+0F20  00        
+0F21  00        
+0F22  00        
+0F23  00        
+0F24  00        
+0F25  00        
+0F26  00        
+0F27  00        
+0F28  00        
+0F29  00        
+0F2A  00        
+0F2B  00        
+0F2C  00        
+0F2D  00        
+0F2E  00        
+0F2F  00        
+0F30  00        
+0F31  00        
+0F32  00        
+0F33  00        
+0F34  00        
+0F35  00        
+0F36  00        
+0F37  00        
+0F38  00        
+0F39  00        
+0F3A  00        
+0F3B  00        
+0F3C  00        
+0F3D  00        
+0F3E  00        
+0F3F  00        
+0F40  00        
+0F41  00        
+0F42  00        
+0F43  00        
+0F44  00        
+0F45  00        
+0F46  00        
+0F47  00        
+0F48  00        
+0F49  00        
+0F4A  00        
+0F4B  00        
+0F4C  00        
+0F4D  00        
+0F4E  00        
+0F4F  00        
+0F50  00        
+0F51  00        
+0F52  00        
+0F53  00        
+0F54  00        
+0F55  00        
+0F56  00        
+0F57  00        
+0F58  00        
+0F59  00        
+0F5A  00        
+0F5B  00        
+0F5C  00        
+0F5D  00        
+0F5E  00        
+0F5F  00        
+0F60  00        
+0F61  00        
+0F62  00        
+0F63  00        
+0F64  00        
+0F65  00        
+0F66  00        
+0F67  00        
+0F68  00        
+0F69  00        
+0F6A  00        
+0F6B  00        
+0F6C  00        
+0F6D  00        
+0F6E  00        
+0F6F  00        
+0F70  00        
+0F71  00        
+0F72  00        
+0F73  00        
+0F74  00        
+0F75  00        
+0F76  00        
+0F77  00        
+0F78  00        
+0F79  00        
+0F7A  00        
+0F7B  00        
+0F7C  00        
+0F7D  00        
+0F7E  00        
+0F7F  00        
+0F80  00        
+0F81  00        
+0F82  00        
+0F83  00        
+0F84  00        
+0F85  00        
+0F86  00        
+0F87  00        
+0F88  00        
+0F89  00        
+0F8A  00        
+0F8B  00        
+0F8C  00        
+0F8D  00        
+0F8E  00        
+0F8F  00        
+0F90  00        
+0F91  00        
+0F92  00        
+0F93  00        
+0F94  00        
+0F95  00        
+0F96  00        
+0F97  00        
+0F98  00        
+0F99  00        
+0F9A  00        
+0F9B  00        
+0F9C  00        
+0F9D  00        
+0F9E  00        
+0F9F  00        
+0FA0  00        
+0FA1  00        
+0FA2  00        
+0FA3  00        
+0FA4  00        
+0FA5  00        
+0FA6  00        
+0FA7  00        
+0FA8  00        
+0FA9  00        
+0FAA  00        
+0FAB  00        
+0FAC  00        
+0FAD  00        
+0FAE  00        
+0FAF  00        
+0FB0  00        
+0FB1  00        
+0FB2  00        
+0FB3  00        
+0FB4  00        
+0FB5  00        
+0FB6  00        
+0FB7  00        
+0FB8  00        
+0FB9  00        
+0FBA  00        
+0FBB  00        
+0FBC  00        
+0FBD  00        
+0FBE  00        
+0FBF  00        
+0FC0  00        
+0FC1  00        
+0FC2  00        
+0FC3  00        
+0FC4  00        
+0FC5  00        
+0FC6  00        
+0FC7  00        
+0FC8  00        
+0FC9  00        
+0FCA  00        
+0FCB  00        
+0FCC  00        
+0FCD  00        
+0FCE  00        
+0FCF  00        
+0FD0  00        
+0FD1  00        
+0FD2  00        
+0FD3  00        
+0FD4  00        
+0FD5  00        
+0FD6  00        
+0FD7  00        
+0FD8  00        
+0FD9  00        
+0FDA  00        
+0FDB  00        
+0FDC  00        
+0FDD  00        
+0FDE  00        
+0FDF  00        
+0FE0  00        
+0FE1  00        
+0FE2  00        
+0FE3  00        
+0FE4  00        
+0FE5  00        
+0FE6  00        
+0FE7  00        
+0FE8  00        
+0FE9  00        
+0FEA  00        
+0FEB  00        
+0FEC  00        
+0FED  00        
+0FEE  00        
+0FEF  00        
+0FF0  00        
+0FF1  00        
+0FF2  00        
+0FF3  00        
+0FF4  00        
+0FF5  00        
+0FF6  00        
+0FF7  00        
+0FF8  00        
+0FF9  00        
+0FFA  00        
+0FFB  00        
+0FFC  00        
+0FFD  00        
+0FFE  00        
+0FFF  00        
+1000  00        
+1001  00        
+1002  00        
+1003  00        
+1004  00        
+1005  00        
+1006  00        
+1007  00        
+1008  00        
+1009  00        
+100A  00        
+100B  00        
+100C  00        
+100D  00        
+100E  00        
+100F  00        
+1010  00        
+1011  00        
+1012  00        
+1013  00        
+1014  00        
+1015  00        
+1016  00        
+1017  00        
+1018  00        
+1019  00        
+101A  00        
+101B  00        
+101C  00        
+101D  00        
+101E  00        
+101F  00        
+1020  00        
+1021  00        
+1022  00        
+1023  00        
+1024  00        
+1025  00        
+1026  00        
+1027  00        
+1028  00        
+1029  00        
+102A  00        
+102B  00        
+102C  00        
+102D  00        
+102E  00        
+102F  00        
+1030  00        
+1031  00        
+1032  00        
+1033  00        
+1034  00        
+1035  00        
+1036  00        
+1037  00        
+1038  00        
+1039  00        
+103A  00        
+103B  00        
+103C  00        
+103D  00        
+103E  00        
+103F  00        
+1040  00        
+1041  00        
+1042  00        
+1043  00        
+1044  00        
+1045  00        
+1046  00        
+1047  00        
+1048  00        
+1049  00        
+104A  00        
+104B  00        
+104C  00        
+104D  00        
+104E  00        
+104F  00        
+1050  00        
+1051  00        
+1052  00        
+1053  00        
+1054  00        
+1055  00        
+1056  00        
+1057  00        
+1058  00        
+1059  00        
+105A  00        
+105B  00        
+105C  00        
+105D  00        
+105E  00        
+105F  00        
+1060  00        
+1061  00        
+1062  00        
+1063  00        
+1064  00        
+1065  00        
+1066  00        
+1067  00        
+1068  00        
+1069  00        
+106A  00        
+106B  00        
+106C  00        
+106D  00        
+106E  00        
+106F  00        
+1070  00        
+1071  00        
+1072  00        
+1073  00        
+1074  00        
+1075  00        
+1076  00        
+1077  00        
+1078  00        
+1079  00        
+107A  00        
+107B  00        
+107C  00        
+107D  00        
+107E  00        
+107F  00        
+1080  00        
+1081  00        
+1082  00        
+1083  00        
+1084  00        
+1085  00        
+1086  00        
+1087  00        
+1088  00        
+1089  00        
+108A  00        
+108B  00        
+108C  00        
+108D  00        
+108E  00        
+108F  00        
+1090  00        
+1091  00        
+1092  00        
+1093  00        
+1094  00        
+1095  00        
+1096  00        
+1097  00        
+1098  00        
+1099  00        
+109A  00        
+109B  00        
+109C  00        
+109D  00        
+109E  00        
+109F  00        
+10A0  00        
+10A1  00        
+10A2  00        
+10A3  00        
+10A4  00        
+10A5  00        
+10A6  00        
+10A7  00        
+10A8  00        
+10A9  00        
+10AA  00        
+10AB  00        
+10AC  00        
+10AD  00        
+10AE  00        
+10AF  00        
+10B0  00        
+10B1  00        
+10B2  00        
+10B3  00        
+10B4  00        
+10B5  00        
+10B6  00        
+10B7  00        
+10B8  00        
+10B9  00        
+10BA  00        
+10BB  00        
+10BC  00        
+10BD  00        
+10BE  00        
+10BF  00        
+10C0  00        
+10C1  00        
+10C2  00        
+10C3  00        
+10C4  00        
+10C5  00        
+10C6  00        
+10C7  00        
+10C8  00        
+10C9  00        
+10CA  00        
+10CB  00        
+10CC  00        
+10CD  00        
+10CE  00        
+10CF  00        
+10D0  00        
+10D1  00        
+10D2  00        
+10D3  00        
+10D4  00        
+10D5  00        
+10D6  00        
+10D7  00        
+10D8  00        
+10D9  00        
+10DA  00        
+10DB  00        
+10DC  00        
+10DD  00        
+10DE  00        
+10DF  00        
+10E0  00        
+10E1  00        
+10E2  00        
+10E3  00        
+10E4  00        
+10E5  00        
+10E6  00        
+10E7  00        
+10E8  00        
+10E9  00        
+10EA  00        
+10EB  00        
+10EC  00        
+10ED  00        
+10EE  00        
+10EF  00        
+10F0  00        
+10F1  00        
+10F2  00        
+10F3  00        
+10F4  00        
+10F5  00        
+10F6  00        
+10F7  00        
+10F8  00        
+10F9  00        
+10FA  00        
+10FB  00        
+10FC  00        
+10FD  00        
+10FE  00        
+10FF  00        
+1100  00        
+1101  00        
+1102  00        
+1103  00        
+1104  00        
+1105  00        
+1106  00        
+1107  00        
+1108  00        
+1109  00        
+110A  00        
+110B  00        
+110C  00        
+110D  00        
+110E  00        
+110F  00        
+1110  00        
+1111  00        
+1112  00        
+1113  00        
+1114  00        
+1115  00        
+1116  00        
+1117  00        
+1118  00        
+1119  00        
+111A  00        
+111B  00        
+111C  00        
+111D  00        
+111E  00        
+111F  00        
+1120  00        
+1121  00        
+1122  00        
+1123  00        
+1124  00        
+1125  00        
+1126  00        
+1127  00        
+1128  00        
+1129  00        
+112A  00        
+112B  00        
+112C  00        
+112D  00        
+112E  00        
+112F  00        
+1130  00        
+1131  00        
+1132  00        
+1133  00        
+1134  00        
+1135  00        
+1136  00        
+1137  00        
+1138  00        
+1139  00        
+113A  00        
+113B  00        
+113C  00        
+113D  00        
+113E  00        
+113F  00        
+1140  00        
+1141  00        
+1142  00        
+1143  00        
+1144  00        
+1145  00        
+1146  00        
+1147  00        
+1148  00        
+1149  00        
+114A  00        
+114B  00        
+114C  00        
+114D  00        
+114E  00        
+114F  00        
+1150  00        
+1151  00        
+1152  00        
+1153  00        
+1154  00        
+1155  00        
+1156  00        
+1157  00        
+1158  00        
+1159  00        
+115A  00        
+115B  00        
+115C  00        
+115D  00        
+115E  00        
+115F  00        
+1160  00        
+1161  00        
+1162  00        
+1163  00        
+1164  00        
+1165  00        
+1166  00        
+1167  00        
+1168  00        
+1169  00        
+116A  00        
+116B  00        
+116C  00        
+116D  00        
+116E  00        
+116F  00        
+1170  00        
+1171  00        
+1172  00        
+1173  00        
+1174  00        
+1175  00        
+1176  00        
+1177  00        
+1178  00        
+1179  00        
+117A  00        
+117B  00        
+117C  00        
+117D  00        
+117E  00        
+117F  00        
+1180  00        
+1181  00        
+1182  00        
+1183  00        
+1184  00        
+1185  00        
+1186  00        
+1187  00        
+1188  00        
+1189  00        
+118A  00        
+118B  00        
+118C  00        
+118D  00        
+118E  00        
+118F  00        
+1190  00        
+1191  00        
+1192  00        
+1193  00        
+1194  00        
+1195  00        
+1196  00        
+1197  00        
+1198  00        
+1199  00        
+119A  00        
+119B  00        
+119C  00        
+119D  00        
+119E  00        
+119F  00        
+11A0  00        
+11A1  00        
+11A2  00        
+11A3  00        
+11A4  00        
+11A5  00        
+11A6  00        
+11A7  00        
+11A8  00        
+11A9  00        
+11AA  00        
+11AB  00        
+11AC  00        
+11AD  00        
+11AE  00        
+11AF  00        
+11B0  00        
+11B1  00        
+11B2  00        
+11B3  00        
+11B4  00        
+11B5  00        
+11B6  00        
+11B7  00        
+11B8  00        
+11B9  00        
+11BA  00        
+11BB  00        
+11BC  00        
+11BD  00        
+11BE  00        
+11BF  00        
+11C0  00        
+11C1  00        
+11C2  00        
+11C3  00        
+11C4  00        
+11C5  00        
+11C6  00        
+11C7  00        
+11C8  00        
+11C9  00        
+11CA  00        
+11CB  00        
+11CC  00        
+11CD  00        
+11CE  00        
+11CF  00        
+11D0  00        
+11D1  00        
+11D2  00        
+11D3  00        
+11D4  00        
+11D5  00        
+11D6  00        
+11D7  00        
+11D8  00        
+11D9  00        
+11DA  00        
+11DB  00        
+11DC  00        
+11DD  00        
+11DE  00        
+11DF  00        
+11E0  00        
+11E1  00        
+11E2  00        
+11E3  00        
+11E4  00        
+11E5  00        
+11E6  00        
+11E7  00        
+11E8  00        
+11E9  00        
+11EA  00        
+11EB  00        
+11EC  00        
+11ED  00        
+11EE  00        
+11EF  00        
+11F0  00        
+11F1  00        
+11F2  00        
+11F3  00        
+11F4  00        
+11F5  00        
+11F6  00        
+11F7  00        
+11F8  00        
+11F9  00        
+11FA  00        
+11FB  00        
+11FC  00        
+11FD  00        
+11FE  00        
+11FF  00        
+1200  00        
+1201  00        
+1202  00        
+1203  00        
+1204  00        
+1205  00        
+1206  00        
+1207  00        
+1208  00        
+1209  00        
+120A  00        
+120B  00        
+120C  00        
+120D  00        
+120E  00        
+120F  00        
+1210  00        
+1211  00        
+1212  00        
+1213  00        
+1214  00        
+1215  00        
+1216  00        
+1217  00        
+1218  00        
+1219  00        
+121A  00        
+121B  00        
+121C  00        
+121D  00        
+121E  00        
+121F  00        
+1220  00        
+1221  00        
+1222  00        
+1223  00        
+1224  00        
+1225  00        
+1226  00        
+1227  00        
+1228  00        
+1229  00        
+122A  00        
+122B  00        
+122C  00        
+122D  00        
+122E  00        
+122F  00        
+1230  00        
+1231  00        
+1232  00        
+1233  00        
+1234  00        
+1235  00        
+1236  00        
+1237  00        
+1238  00        
+1239  00        
+123A  00        
+123B  00        
+123C  00        
+123D  00        
+123E  00        
+123F  00        
+1240  00        
+1241  00        
+1242  00        
+1243  00        
+1244  00        
+1245  00        
+1246  00        
+1247  00        
+1248  00        
+1249  00        
+124A  00        
+124B  00        
+124C  00        
+124D  00        
+124E  00        
+124F  00        
+1250  00        
+1251  00        
+1252  00        
+1253  00        
+1254  00        
+1255  00        
+1256  00        
+1257  00        
+1258  00        
+1259  00        
+125A  00        
+125B  00        
+125C  00        
+125D  00        
+125E  00        
+125F  00        
+1260  00        
+1261  00        
+1262  00        
+1263  00        
+1264  00        
+1265  00        
+1266  00        
+1267  00        
+1268  00        
+1269  00        
+126A  00        
+126B  00        
+126C  00        
+126D  00        
+126E  00        
+126F  00        
+1270  00        
+1271  00        
+1272  00        
+1273  00        
+1274  00        
+1275  00        
+1276  00        
+1277  00        
+1278  00        
+1279  00        
+127A  00        
+127B  00        
+127C  00        
+127D  00        
+127E  00        
+127F  00        
+1280  00        
+1281  00        
+1282  00        
+1283  00        
+1284  00        
+1285  00        
+1286  00        
+1287  00        
+1288  00        
+1289  00        
+128A  00        
+128B  00        
+128C  00        
+128D  00        
+128E  00        
+128F  00        
+1290  00        
+1291  00        
+1292  00        
+1293  00        
+1294  00        
+1295  00        
+1296  00        
+1297  00        
+1298  00        
+1299  00        
+129A  00        
+129B  00        
+129C  00        
+129D  00        
+129E  00        
+129F  00        
+12A0  00        
+12A1  00        
+12A2  00        
+12A3  00        
+12A4  00        
+12A5  00        
+12A6  00        
+12A7  00        
+12A8  00        
+12A9  00        
+12AA  00        
+12AB  00        
+12AC  00        
+12AD  00        
+12AE  00        
+12AF  00        
+12B0  00        
+12B1  00        
+12B2  00        
+12B3  00        
+12B4  00        
+12B5  00        
+12B6  00        
+12B7  00        
+12B8  00        
+12B9  00        
+12BA  00        
+12BB  00        
+12BC  00        
+12BD  00        
+12BE  00        
+12BF  00        
+12C0  00        
+12C1  00        
+12C2  00        
+12C3  00        
+12C4  00        
+12C5  00        
+12C6  00        
+12C7  00        
+12C8  00        
+12C9  00        
+12CA  00        
+12CB  00        
+12CC  00        
+12CD  00        
+12CE  00        
+12CF  00        
+12D0  00        
+12D1  00        
+12D2  00        
+12D3  00        
+12D4  00        
+12D5  00        
+12D6  00        
+12D7  00        
+12D8  00        
+12D9  00        
+12DA  00        
+12DB  00        
+12DC  00        
+12DD  00        
+12DE  00        
+12DF  00        
+12E0  00        
+12E1  00        
+12E2  00        
+12E3  00        
+12E4  00        
+12E5  00        
+12E6  00        
+12E7  00        
+12E8  00        
+12E9  00        
+12EA  00        
+12EB  00        
+12EC  00        
+12ED  00        
+12EE  00        
+12EF  00        
+12F0  00        
+12F1  00        
+12F2  00        
+12F3  00        
+12F4  00        
+12F5  00        
+12F6  00        
+12F7  00        
+12F8  00        
+12F9  00        
+12FA  00        
+12FB  00        
+12FC  00        
+12FD  00        
+12FE  00        
+12FF  00        
+1300  00        
+1301  00        
+1302  00        
+1303  00        
+1304  00        
+1305  00        
+1306  00        
+1307  00        
+1308  00        
+1309  00        
+130A  00        
+130B  00        
+130C  00        
+130D  00        
+130E  00        
+130F  00        
+1310  00        
+1311  00        
+1312  00        
+1313  00        
+1314  00        
+1315  00        
+1316  00        
+1317  00        
+1318  00        
+1319  00        
+131A  00        
+131B  00        
+131C  00        
+131D  00        
+131E  00        
+131F  00        
+1320  00        
+1321  00        
+1322  00        
+1323  00        
+1324  00        
+1325  00        
+1326  00        
+1327  00        
+1328  00        
+1329  00        
+132A  00        
+132B  00        
+132C  00        
+132D  00        
+132E  00        
+132F  00        
+1330  00        
+1331  00        
+1332  00        
+1333  00        
+1334  00        
+1335  00        
+1336  00        
+1337  00        
+1338  00        
+1339  00        
+133A  00        
+133B  00        
+133C  00        
+133D  00        
+133E  00        
+133F  00        
+1340  00        
+1341  00        
+1342  00        
+1343  00        
+1344  00        
+1345  00        
+1346  00        
+1347  00        
+1348  00        
+1349  00        
+134A  00        
+134B  00        
+134C  00        
+134D  00        
+134E  00        
+134F  00        
+1350  00        
+1351  00        
+1352  00        
+1353  00        
+1354  00        
+1355  00        
+1356  00        
+1357  00        
+1358  00        
+1359  00        
+135A  00        
+135B  00        
+135C  00        
+135D  00        
+135E  00        
+135F  00        
+1360  00        
+1361  00        
+1362  00        
+1363  00        
+1364  00        
+1365  00        
+1366  00        
+1367  00        
+1368  00        
+1369  00        
+136A  00        
+136B  00        
+136C  00        
+136D  00        
+136E  00        
+136F  00        
+1370  00        
+1371  00        
+1372  00        
+1373  00        
+1374  00        
+1375  00        
+1376  00        
+1377  00        
+1378  00        
+1379  00        
+137A  00        
+137B  00        
+137C  00        
+137D  00        
+137E  00        
+137F  00        
+1380  00        
+1381  00        
+1382  00        
+1383  00        
+1384  00        
+1385  00        
+1386  00        
+1387  00        
+1388  00        
+1389  00        
+138A  00        
+138B  00        
+138C  00        
+138D  00        
+138E  00        
+138F  00        
+1390  00        
+1391  00        
+1392  00        
+1393  00        
+1394  00        
+1395  00        
+1396  00        
+1397  00        
+1398  00        
+1399  00        
+139A  00        
+139B  00        
+139C  00        
+139D  00        
+139E  00        
+139F  00        
+13A0  00        
+13A1  00        
+13A2  00        
+13A3  00        
+13A4  00        
+13A5  00        
+13A6  00        
+13A7  00        
+13A8  00        
+13A9  00        
+13AA  00        
+13AB  00        
+13AC  00        
+13AD  00        
+13AE  00        
+13AF  00        
+13B0  00        
+13B1  00        
+13B2  00        
+13B3  00        
+13B4  00        
+13B5  00        
+13B6  00        
+13B7  00        
+13B8  00        
+13B9  00        
+13BA  00        
+13BB  00        
+13BC  00        
+13BD  00        
+13BE  00        
+13BF  00        
+13C0  00        
+13C1  00        
+13C2  00        
+13C3  00        
+13C4  00        
+13C5  00        
+13C6  00        
+13C7  00        
+13C8  00        
+13C9  00        
+13CA  00        
+13CB  00        
+13CC  00        
+13CD  00        
+13CE  00        
+13CF  00        
+13D0  00        
+13D1  00        
+13D2  00        
+13D3  00        
+13D4  00        
+13D5  00        
+13D6  00        
+13D7  00        
+13D8  00        
+13D9  00        
+13DA  00        
+13DB  00        
+13DC  00        
+13DD  00        
+13DE  00        
+13DF  00        
+13E0  00        
+13E1  00        
+13E2  00        
+13E3  00        
+13E4  00        
+13E5  00        
+13E6  00        
+13E7  00        
+13E8  00        
+13E9  00        
+13EA  00        
+13EB  00        
+13EC  00        
+13ED  00        
+13EE  00        
+13EF  00        
+13F0  00        
+13F1  00        
+13F2  00        
+13F3  00        
+13F4  00        
+13F5  00        
+13F6  00        
+13F7  00        
+13F8  00        
+13F9  00        
+13FA  00        
+13FB  00        
+13FC  00        
+13FD  00        
+13FE  00        
+13FF  00        
+
+// TODO
 1400  00        nop
-1401  CD 74 14  call    $1474
+1401  CD 74 14  call    $1474           // l -> Shift amount
 1404  00        nop
 1405  C5        push    b
 1406  E5        push    h
@@ -3710,7 +3767,9 @@
 
 1422  00        nop
 1423  00        nop
-1424  CD 74 14  call    $1474
+
+// TODO
+1424  CD 74 14  call    $1474           // l -> Shift amount
 1427  C5        push    b
 1428  E5        push    h
 1429  AF        xra     a
@@ -3726,6 +3785,7 @@
 1435  C2 27 14  jnz     $1427
 1438  C9        ret
 
+// Draw 8*b from (de) at (hl)
 1439  C5        push    b
 143A  1A        ldax    d
 143B  77        mov     m,a
@@ -3748,7 +3808,9 @@
 144F  00        nop
 1450  00        nop
 1451  00        nop
-1452  CD 74 14  call    $1474
+
+// TODO
+1452  CD 74 14  call    $1474           // l -> Shift amount
 1455  C5        push    b
 1456  E5        push    h
 1457  1A        ldax    d
@@ -3773,11 +3835,13 @@
 1470  C2 55 14  jnz     $1455
 1473  C9        ret
 
+// l -> Shift amount
 1474  7D        mov     a,l
 1475  E6 07     ani     $07
 1477  D3 02     out     $02
-1479  C3 47 1A  jmp     $1A47
+1479  C3 47 1A  jmp     $1A47           // HL/8 & 111111 | 10 and ret
 
+// TODO
 147C  C5        push    b
 147D  E5        push    h
 147E  7E        mov     a,m
@@ -3794,7 +3858,8 @@
 148D  C2 7C 14  jnz     $147C
 1490  C9        ret
 
-1491  CD 74 14  call    $1474
+// TODO
+1491  CD 74 14  call    $1474           // l -> Shift amount
 1494  AF        xra     a
 1495  32 61 20  sta     $2061
 1498  C5        push    b
@@ -3831,7 +3896,9 @@
 14C7  C2 98 14  jnz     $1498
 14CA  C9        ret
 
+// Clear 8*b box
 14CB  AF        xra     a
+// set 8*b box to a
 14CC  C5        push    b
 14CD  77        mov     m,a
 14CE  01 20 00  lxi     b,$0020
@@ -3849,7 +3916,7 @@
 14E1  3A 29 20  lda     $2029
 14E4  FE D8     cpi     $D8
 14E6  47        mov     b,a
-14E7  D2 30 15  jnc     $1530
+14E7  D2 30 15  jnc     $1530           // Set (2025) to 3; clear (2002) and sound
 14EA  3A 02 20  lda     $2002
 14ED  A7        ana     a
 14EE  C8        rz
@@ -3862,7 +3929,7 @@
 14FB  FE 90     cpi     $90
 14FD  D2 04 15  jnc     $1504
 1500  B8        cmp     b
-1501  D2 30 15  jnc     $1530
+1501  D2 30 15  jnc     $1530           // Set (2025) to 3; clear (2002) and sound
 1504  68        mov     l,b
 1505  CD 62 15  call    $1562
 1508  3A 2A 20  lda     $202A
@@ -3871,22 +3938,24 @@
 150F  22 64 20  shld    $2064
 1512  3E 05     mvi     a,$05
 1514  32 25 20  sta     $2025
-1517  CD 81 15  call    $1581
+1517  CD 81 15  call    $1581           // 18 * b + c - 1 -> l; (2067) -> h
 151A  7E        mov     a,m
 151B  A7        ana     a
-151C  CA 30 15  jz      $1530
+151C  CA 30 15  jz      $1530           // Set (2025) to 3; clear (2002) and sound
 151F  36 00     mvi     m,$00
 1521  CD 5F 0A  call    $0A5F
-1524  CD 3B 1A  call    $1A3B
-1527  CD D3 15  call    $15D3
+1524  CD 3B 1A  call    $1A3B           // Copy data from m to regs (m:5) -> (EDLHB)
+1527  CD D3 15  call    $15D3           // Draw one enemy (all types) (both)
 152A  3E 10     mvi     a,$10
 152C  32 03 20  sta     $2003
 152F  C9        ret
 
+// Set (2025) to 3; clear (2002) and sound
 1530  3E 03     mvi     a,$03
 1532  32 25 20  sta     $2025
-1535  C3 4A 15  jmp     $154A
+1535  C3 4A 15  jmp     $154A           // Clear (2002) and sound
 
+// TODO
 1538  21 03 20  lxi     h,$2003
 153B  35        dcr     m
 153C  C0        rnz
@@ -3895,21 +3964,25 @@
 1542  CD 24 14  call    $1424
 1545  3E 04     mvi     a,$04
 1547  32 25 20  sta     $2025
+// Clear (2002) and sound
 154A  AF        xra     a
 154B  32 02 20  sta     $2002
 154E  06 F7     mvi     b,$F7
-1550  C3 DC 19  jmp     $19DC
+1550  C3 DC 19  jmp     $19DC           // (2094) AND b and then OUT 3
 
 1553  00        nop
+
+// TODO
 1554  0E 00     mvi     c,$00
 1556  BC        cmp     h
-1557  D4 90 15  cnc     $1590
+1557  D4 90 15  cnc     $1590           // c+=1; a+=10 until a is positive
 155A  BC        cmp     h
 155B  D0        rnc
 155C  C6 10     adi     $10
 155E  0C        inr     c
 155F  C3 5A 15  jmp     $155A
 
+// TODO
 1562  3A 09 20  lda     $2009
 1565  65        mov     h,l
 1566  CD 54 15  call    $1554
@@ -3919,16 +3992,19 @@
 156D  6F        mov     l,a
 156E  C9        ret
 
+// TODO
 156F  3A 0A 20  lda     $200A
 1572  CD 54 15  call    $1554
 1575  DE 10     sbi     $10
 1577  67        mov     h,a
 1578  C9        ret
 
+// TODO
 1579  3E 01     mvi     a,$01
 157B  32 85 20  sta     $2085
 157E  C3 45 15  jmp     $1545
 
+// 18 * b + c - 1 -> l; (2067) -> h
 1581  78        mov     a,b
 1582  07        rlc
 1583  07        rlc
@@ -3939,10 +4015,11 @@
 1588  81        add     c
 1589  3D        dcr     a
 158A  6F        mov     l,a
-158B  3A 67 20  lda     $2067
+158B  3A 67 20  lda     $2067           // player indicator (21/22)
 158E  67        mov     h,a
 158F  C9        ret
 
+// c+=1; a+=10 until a is positive
 1590  0C        inr     c
 1591  C6 10     adi     $10
 1593  FA 90 15  jm      $1590
@@ -3952,8 +4029,8 @@
 159A  A7        ana     a
 159B  C2 B7 15  jnz     $15B7
 159E  21 A4 3E  lxi     h,$3EA4
-15A1  CD C5 15  call    $15C5
-15A4  D0        rnc
+15A1  CD C5 15  call    $15C5           // Find space from (hl), size 17, set CARRY if can't
+15A4  D0        rnc                     // Return if found
 15A5  06 FE     mvi     b,$FE
 15A7  3E 01     mvi     a,$01
 15A9  32 0D 20  sta     $200D
@@ -3962,26 +4039,27 @@
 15B0  3A 0E 20  lda     $200E
 15B3  32 07 20  sta     $2007
 15B6  C9        ret
-
 15B7  21 24 25  lxi     h,$2524
-15BA  CD C5 15  call    $15C5
-15BD  D0        rnc
-15BE  CD F1 18  call    $18F1
+15BA  CD C5 15  call    $15C5           // Find space from (hl), size 17, set CARRY if can't
+15BD  D0        rnc                     // Return if found
+15BE  CD F1 18  call    $18F1           // if ((2082) == 1) b = 3
 15C1  AF        xra     a
 15C2  C3 A9 15  jmp     $15A9
 
+// Find space from (hl), size 17, set CARRY if can't
 15C5  06 17     mvi     b,$17
 15C7  7E        mov     a,m
 15C8  A7        ana     a
-15C9  C2 6B 16  jnz     $166B
+15C9  C2 6B 16  jnz     $166B           // Set CARRY and ret
 15CC  23        inx     h
 15CD  05        dcr     b
-15CE  C2 C7 15  jnz     $15C7
+15CE  C2 C7 15  jnz     $15C7           // Loop
 15D1  C9        ret
 
-// Draw one enemy (all types)
 15D2  00        nop
-15D3  CD 74 14  call    $1474
+
+// Draw one enemy (all types) (both)
+15D3  CD 74 14  call    $1474           // l -> Shift amount
 15D6  E5        push    h
 15D7  C5        push    b
 15D8  E5        push    h
@@ -4004,7 +4082,8 @@
 15F1  E1        pop     h
 15F2  C9        ret
 
-15F3  CD 11 16  call    $1611           // Set hl -> (2067) 00
+// TODO
+15F3  CD 11 16  call    $1611           // load (player) to H
 15F6  01 00 37  lxi     b,$3700
 15F9  7E        mov     a,m
 15FA  A7        ana     a
@@ -4021,9 +4100,9 @@
 160E  36 01     mvi     m,$01
 1610  C9        ret
 
-// Set hl -> (2067) 00
+// load (player) to H
 1611  2E 00     mvi     l,$00
-1613  3A 67 20  lda     $2067
+1613  3A 67 20  lda     $2067           // player indicator (21/22)
 1616  67        mov     h,a
 1617  C9        ret
 
@@ -4039,26 +4118,27 @@
 1626  3A 25 20  lda     $2025
 1629  A7        ana     a
 162A  C0        rnz
-162B  3A EF 20  lda     $20EF
+162B  3A EF 20  lda     $20EF           // TODO I'm playing now
 162E  A7        ana     a
 162F  CA 52 16  jz      $1652
 1632  3A 2D 20  lda     $202D
 1635  A7        ana     a
 1636  C2 48 16  jnz     $1648
-1639  CD C0 17  call    $17C0           // Check in 1
-163C  E6 10     ani     $10             // P1 shoot
+1639  CD C0 17  call    $17C0           // IN 1/2 (depending on lsb(2067))
+163C  E6 10     ani     $10             // shoot
 163E  C8        rz
 163F  3E 01     mvi     a,$01
 1641  32 25 20  sta     $2025
 1644  32 2D 20  sta     $202D
 1647  C9        ret
 
-1648  CD C0 17  call    $17C0           // Check in 1
-164B  E6 10     ani     $10             // P1 shoot
+1648  CD C0 17  call    $17C0           // IN 1/2 (depending on lsb(2067))
+164B  E6 10     ani     $10             // shoot
 164D  C0        rnz
 164E  32 2D 20  sta     $202D
 1651  C9        ret
 
+// TODO
 1652  21 25 20  lxi     h,$2025
 1655  36 01     mvi     m,$01
 1657  2A ED 20  lhld    $20ED
@@ -4072,14 +4152,16 @@
 1667  32 1D 20  sta     $201D
 166A  C9        ret
 
-166B  37        stc
+// Set CARRY and ret
+166B  37        stc                     // Set CARRY
 166C  C9        ret
 
+// TODO
 166D  AF        xra     a
 166E  CD 8B 1A  call    $1A8B
 1671  CD 10 19  call    $1910
 1674  36 00     mvi     m,$00
-1676  CD CA 09  call    $09CA
+1676  CD CA 09  call    $09CA           // let HL = 20F8/20FC, depending on lsb(2067)
 1679  23        inx     h
 167A  11 F5 20  lxi     d,$20F5
 167D  1A        ldax    d
@@ -4090,7 +4172,6 @@
 1682  CA 8B 16  jz      $168B
 1685  D2 98 16  jnc     $1698
 1688  C3 8F 16  jmp     $168F
-
 168B  BE        cmp     m
 168C  D2 98 16  jnc     $1698
 168F  7E        mov     a,m
@@ -4100,59 +4181,62 @@
 1693  7E        mov     a,m
 1694  12        stax    d
 1695  CD 50 19  call    $1950
-1698  3A CE 20  lda     $20CE
+1698  3A CE 20  lda     $20CE           // 2 players variable
 169B  A7        ana     a
 169C  CA C9 16  jz      $16C9
 169F  21 03 28  lxi     h,$2803
 16A2  11 A6 1A  lxi     d,$1AA6
 16A5  0E 14     mvi     c,$14
-16A7  CD 93 0A  call    $0A93
+16A7  CD 93 0A  call    $0A93           // Draw C chars from (DE) to (HL)
 16AA  25        dcr     h
 16AB  25        dcr     h
 16AC  06 1B     mvi     b,$1B
-16AE  3A 67 20  lda     $2067
+16AE  3A 67 20  lda     $2067           // player indicator (21/22)
 16B1  0F        rrc
 16B2  DA B7 16  jc      $16B7
 16B5  06 1C     mvi     b,$1C
 16B7  78        mov     a,b
-16B8  CD FF 08  call    $08FF
-16BB  CD B1 0A  call    $0AB1
-16BE  CD E7 18  call    $18E7
+16B8  CD FF 08  call    $08FF           // Depending on A, draw a char
+16BB  CD B1 0A  call    $0AB1           // Delay for $40
+16BE  CD E7 18  call    $18E7           // if (lsb(2067) == 1) h = 20E8; else h = 20E7;
 16C1  7E        mov     a,m
 16C2  A7        ana     a
 16C3  CA C9 16  jz      $16C9
 16C6  C3 ED 02  jmp     $02ED
 
+// TODO
 16C9  21 18 2D  lxi     h,$2D18
 16CC  11 A6 1A  lxi     d,$1AA6
 16CF  0E 0A     mvi     c,$0A
-16D1  CD 93 0A  call    $0A93
+16D1  CD 93 0A  call    $0A93           // Draw C chars from (DE) to (HL)
 16D4  CD B6 0A  call    $0AB6           // Delay for $80
-16D7  CD D6 09  call    $09D6           // Clear mid screen
+16D7  CD D6 09  call    $09D6           // Clear the middle of the screen
 16DA  AF        xra     a
-16DB  32 EF 20  sta     $20EF
+16DB  32 EF 20  sta     $20EF           // TODO I'm playing now
 16DE  D3 05     out     $05
-16E0  CD D1 19  call    $19D1
+16E0  CD D1 19  call    $19D1           // set (20E9) to 1
 16E3  C3 89 0B  jmp     $0B89
 
+// TODO
 16E6  31 00 24  lxi     sp,$2400
 16E9  FB        ei
 16EA  AF        xra     a
 16EB  32 15 20  sta     $2015
 16EE  CD D8 14  call    $14D8
 16F1  06 04     mvi     b,$04
-16F3  CD FA 18  call    $18FA
-16F6  CD 59 0A  call    $0A59
+16F3  CD FA 18  call    $18FA           // (2094) OR b and then OUT 3
+16F6  CD 59 0A  call    $0A59           // cmp (2015) with FF
 16F9  C2 EE 16  jnz     $16EE
-16FC  CD D7 19  call    $19D7
+16FC  CD D7 19  call    $19D7           // clear (20E9)
 16FF  21 01 27  lxi     h,$2701
-1702  CD FA 19  call    $19FA
+1702  CD FA 19  call    $19FA           // Clear lives indicators
 1705  AF        xra     a
 1706  CD 8B 1A  call    $1A8B
 1709  06 FB     mvi     b,$FB
 170B  C3 6B 19  jmp     $196B
 
-170E  CD CA 09  call    $09CA
+// TODO Before drawing the enemies when playing
+170E  CD CA 09  call    $09CA           // let HL = 20F8/20FC, depending on lsb(2067)
 1711  23        inx     h
 1712  7E        mov     a,m
 1713  11 B8 1C  lxi     d,$1CB8
@@ -4170,23 +4254,27 @@
 1728  32 CF 20  sta     $20CF
 172B  C9        ret
 
+// Sound related
 172C  3A 25 20  lda     $2025
 172F  FE 00     cpi     $00
-1731  C2 39 17  jnz     $1739
+1731  C2 39 17  jnz     $1739           // Sound related
 1734  06 FD     mvi     b,$FD
-1736  C3 DC 19  jmp     $19DC
+1736  C3 DC 19  jmp     $19DC           // (2094) AND b and then OUT 3
 
+// Sound related
 1739  06 02     mvi     b,$02
-173B  C3 FA 18  jmp     $18FA
+173B  C3 FA 18  jmp     $18FA           // (2094) OR b and then OUT 3
 
 173E  00        nop
 173F  00        nop
+
+// TODO Draw player??
 1740  21 9B 20  lxi     h,$209B
 1743  35        dcr     m
-1744  CC 6D 17  cz      $176D
+1744  CC 6D 17  cz      $176D           // Sound related
 1747  3A 68 20  lda     $2068
 174A  A7        ana     a
-174B  CA 6D 17  jz      $176D
+174B  CA 6D 17  jz      $176D           // Sound related
 174E  21 96 20  lxi     h,$2096
 1751  35        dcr     m
 1752  C0        rnz
@@ -4195,7 +4283,7 @@
 1757  D3 05     out     $05
 1759  3A 82 20  lda     $2082
 175C  A7        ana     a
-175D  CA 6D 17  jz      $176D
+175D  CA 6D 17  jz      $176D           // Sound related
 1760  2B        dcx     h
 1761  7E        mov     a,m
 1762  2B        dcx     h
@@ -4206,11 +4294,13 @@
 1769  32 9B 20  sta     $209B
 176C  C9        ret
 
+// Sound related
 176D  3A 98 20  lda     $2098
 1770  E6 30     ani     $30
 1772  D3 05     out     $05
 1774  C9        ret
 
+// TODO
 1775  3A 95 20  lda     $2095
 1778  A7        ana     a
 1779  CA AA 17  jz      $17AA
@@ -4222,7 +4312,6 @@
 1789  23        inx     h
 178A  13        inx     d
 178B  C3 85 17  jmp     $1785
-
 178E  1A        ldax    d
 178F  32 97 20  sta     $2097
 1792  21 98 20  lxi     h,$2098
@@ -4243,8 +4332,9 @@
 17AD  35        dcr     m
 17AE  C0        rnz
 17AF  06 EF     mvi     b,$EF
-17B1  C3 DC 19  jmp     $19DC
+17B1  C3 DC 19  jmp     $19DC           // (2094) AND b and then OUT 3
 
+// TODO Sound related?
 17B4  06 EF     mvi     b,$EF
 17B6  21 98 20  lxi     h,$2098
 17B9  7E        mov     a,m
@@ -4254,15 +4344,19 @@
 17BE  C9        ret
 
 17BF  00        nop
-17C0  3A 67 20  lda     $2067
+
+// IN 1/2 (depending on lsb(2067))
+17C0  3A 67 20  lda     $2067           // player indicator (21/22)
 17C3  0F        rrc
-17C4  D2 CA 17  jnc     $17CA
-17C7  DB 01     in      $01 // TODO
+17C4  D2 CA 17  jnc     $17CA           // read in 2
+17C7  DB 01     in      $01             // read in 1
 17C9  C9        ret
 
+// read in 2
 17CA  DB 02     in      $02
 17CC  C9        ret
 
+// TODO maybe for tilt?
 17CD  DB 02     in      $02
 17CF  E6 04     ani     $04
 17D1  C8        rz
@@ -4271,23 +4365,24 @@
 17D6  C0        rnz
 17D7  31 00 24  lxi     sp,$2400
 17DA  06 04     mvi     b,$04
-17DC  CD D6 09  call    $09D6           // Clear mid screen
+17DC  CD D6 09  call    $09D6           // Clear the middle of the screen
 17DF  05        dcr     b
 17E0  C2 DC 17  jnz     $17DC
 17E3  3E 01     mvi     a,$01
 17E5  32 9A 20  sta     $209A
-17E8  CD D7 19  call    $19D7
+17E8  CD D7 19  call    $19D7           // clear (20E9)
 17EB  FB        ei
 17EC  11 BC 1C  lxi     d,$1CBC
 17EF  21 16 30  lxi     h,$3016
 17F2  0E 04     mvi     c,$04
-17F4  CD 93 0A  call    $0A93
-17F7  CD B1 0A  call    $0AB1
+17F4  CD 93 0A  call    $0A93           // Draw C chars from (DE) to (HL)
+17F7  CD B1 0A  call    $0AB1           // Delay for $40
 17FA  AF        xra     a
 17FB  32 9A 20  sta     $209A
 17FE  32 93 20  sta     $2093
 1801  C3 C9 16  jmp     $16C9
 
+// TODO happens after one playing enemy draw
 1804  21 84 20  lxi     h,$2084
 1807  7E        mov     a,m
 1808  A7        ana     a
@@ -4297,43 +4392,49 @@
 180E  A7        ana     a
 180F  C0        rnz
 1810  06 01     mvi     b,$01
-1812  C3 FA 18  jmp     $18FA
+1812  C3 FA 18  jmp     $18FA           // (2094) OR b and then OUT 3
 
+// Draw scoreboard
 1815  21 10 28  lxi     h,$2810
 1818  11 A3 1C  lxi     d,$1CA3
 181B  0E 15     mvi     c,$15
-181D  CD F3 08  call    $08F3               // Draw string (length = c - 1)
+181D  CD F3 08  call    $08F3           // Draw string (length = c - 1, content = (de))
 1820  3E 0A     mvi     a,$0A
 1822  32 6C 20  sta     $206C
 1825  01 BE 1D  lxi     b,$1DBE
-1828  CD 56 18  call    $1856
-182B  DA 37 18  jc      $1837
-182E  CD 44 18  call    $1844
-1831  C3 28 18  jmp     $1828
+1828  CD 56 18  call    $1856           // if ((bc) == FF) set CARRY and return; else load 4B from (bc) to hl de and clear CARRY
+182B  DA 37 18  jc      $1837           // Draw texts in score board
+182E  CD 44 18  call    $1844           // Draw 8*16 from (de) at (hl)
+1831  C3 28 18  jmp     $1828           // loop
 
-1834  CD B1 0A  call    $0AB1
+1834  CD B1 0A  call    $0AB1           // Delay for $40
+
+// Draw texts in score board
 1837  01 CF 1D  lxi     b,$1DCF
-183A  CD 56 18  call    $1856
+183A  CD 56 18  call    $1856           // if ((bc) == FF) set CARRY and return; else load 4B from (bc) to hl de and clear CARRY
 183D  D8        rc
-183E  CD 4C 18  call    $184C
+183E  CD 4C 18  call    $184C           // Draw one line of text
 1841  C3 3A 18  jmp     $183A
 
+// Draw 8*16 from (de) at (hl)
 1844  C5        push    b
 1845  06 10     mvi     b,$10
-1847  CD 39 14  call    $1439
+1847  CD 39 14  call    $1439           // Draw 8*b from (de) at (hl)
 184A  C1        pop     b
 184B  C9        ret
 
+// Draw one line of text
 184C  C5        push    b
 184D  3A 6C 20  lda     $206C
 1850  4F        mov     c,a
-1851  CD 93 0A  call    $0A93
+1851  CD 93 0A  call    $0A93           // Draw C chars from (DE) to (HL)
 1854  C1        pop     b
 1855  C9        ret
 
+// if ((bc) == FF) set CARRY and return; else load 4B from (bc) to hl de and clear CARRY
 1856  0A        ldax    b
 1857  FE FF     cpi     $FF
-1859  37        stc
+1859  37        stc                     // Set CARRY
 185A  C8        rz
 185B  6F        mov     l,a
 185C  03        inx     b
@@ -4349,6 +4450,7 @@
 1866  A7        ana     a
 1867  C9        ret
 
+// TODO
 1868  21 C2 20  lxi     h,$20C2
 186B  34        inr     m
 186C  23        inx     h
@@ -4357,7 +4459,7 @@
 1871  47        mov     b,a
 1872  3A CA 20  lda     $20CA
 1875  B8        cmp     b
-1876  CA 98 18  jz      $1898
+1876  CA 98 18  jz      $1898           // set (20CB) to 1
 1879  3A C2 20  lda     $20C2
 187C  E6 04     ani     $04
 187E  2A CC 20  lhld    $20CC
@@ -4366,21 +4468,24 @@
 1887  19        dad
 1888  22 C7 20  shld    $20C7
 188B  21 C5 20  lxi     h,$20C5
-188E  CD 3B 1A  call    $1A3B
+188E  CD 3B 1A  call    $1A3B           // Copy data from m to regs (m:5) -> (EDLHB)
 1891  EB        xchg
-1892  C3 D3 15  jmp     $15D3
+1892  C3 D3 15  jmp     $15D3           // Draw one enemy (all types) (both)
 
 1895  00        nop
 1896  00        nop
 1897  00        nop
+
+// set (20CB) to 1
 1898  3E 01     mvi     a,$01
 189A  32 CB 20  sta     $20CB
 189D  C9        ret
 
+// TODO
 189E  21 50 20  lxi     h,$2050
 18A1  11 C0 1B  lxi     d,$1BC0
 18A4  06 10     mvi     b,$10
-18A6  CD 32 1A  call    $1A32
+18A6  CD 32 1A  call    $1A32           // copy (de) to (hl), size b
 18A9  3E 02     mvi     a,$02
 18AB  32 80 20  sta     $2080
 18AE  3E FF     mvi     a,$FF
@@ -4389,31 +4494,34 @@
 18B5  32 C1 20  sta     $20C1
 18B8  3A 55 20  lda     $2055
 18BB  E6 01     ani     $01
-18BD  CA B8 18  jz      $18B8
+18BD  CA B8 18  jz      $18B8           // Wait for lsb(2055) to be set
 18C0  3A 55 20  lda     $2055
 18C3  E6 01     ani     $01
-18C5  C2 C0 18  jnz     $18C0
+18C5  C2 C0 18  jnz     $18C0           // Wait for lsb(2055) to be unset
 18C8  21 11 33  lxi     h,$3311
 18CB  3E 26     mvi     a,$26
 18CD  00        nop
-18CE  CD FF 08  call    $08FF
+18CE  CD FF 08  call    $08FF           // Depending on A, draw a char
 18D1  C3 B6 0A  jmp     $0AB6           // Delay for $80
 
+// Initial screen
 18D4  31 00 24  lxi     sp,$2400
 18D7  06 00     mvi     b,$00
-18D9  CD E6 01  call    $01E6 // Copy 256B 1B00 -> 2000
-18DC  CD 56 19  call    $1956 // Zero out screen
+18D9  CD E6 01  call    $01E6           // Copy 256B 1B00 -> 2000
+18DC  CD 56 19  call    $1956           // Zero out screen
 18DF  3E 08     mvi     a,$08
 18E1  32 CF 20  sta     $20CF
-18E4  C3 EA 0A  jmp     $0AEA // Start main game?
+18E4  C3 EA 0A  jmp     $0AEA           // Start main game?
 
-18E7  3A 67 20  lda     $2067
+// if (lsb(2067) == 1) h = 20E8; else h = 20E7;
+18E7  3A 67 20  lda     $2067           // player indicator (21/22)
 18EA  21 E7 20  lxi     h,$20E7
 18ED  0F        rrc
 18EE  D0        rnc
 18EF  23        inx     h
 18F0  C9        ret
 
+// if ((2082) == 1) b = 3
 18F1  06 02     mvi     b,$02
 18F3  3A 82 20  lda     $2082
 18F6  3D        dcr     a
@@ -4421,13 +4529,14 @@
 18F8  04        inr     b
 18F9  C9        ret
 
-// Sound
+// (2094) OR b and then OUT 3
 18FA  3A 94 20  lda     $2094
 18FD  B0        ora     b
 18FE  32 94 20  sta     $2094
 1901  D3 03     out     $03
 1903  C9        ret
 
+// Reset 2200 - 2137 (to 0x01)
 1904  21 00 22  lxi     h,$2200
 1907  C3 C3 01  jmp     $01C3
 
@@ -4435,23 +4544,27 @@
 190D  C3 97 15  jmp     $1597
 
 1910  21 E7 20  lxi     h,$20E7
-1913  3A 67 20  lda     $2067
+1913  3A 67 20  lda     $2067           // player indicator (21/22)
 1916  0F        rrc
 1917  D8        rc
 1918  23        inx     h
 1919  C9        ret
 
+// TODO draw some string
 191A  0E 1C     mvi     c,$1C
 191C  21 1E 24  lxi     h,$241E
 191F  11 E4 1A  lxi     d,$1AE4
-1922  C3 F3 08  jmp     $08F3               // Draw string (length = c - 1)
+1922  C3 F3 08  jmp     $08F3           // Draw string (length = c - 1, content = (de))
 
+// Draw XXXX (number) from 20F8 - 20FB
 1925  21 F8 20  lxi     h,$20F8
-1928  C3 31 19  jmp     $1931
+1928  C3 31 19  jmp     $1931           // Draw XXXX (number) from m,m+1 to m+2,m+3
 
+// Draw XXXX (number) from 20FC - 20FF
 192B  21 FC 20  lxi     h,$20FC
-192E  C3 31 19  jmp     $1931
+192E  C3 31 19  jmp     $1931           // Draw XXXX (number) from m,m+1 to m+2,m+3
 
+// Draw XXXX (number) from m,m+1 to m+2,m+3
 1931  5E        mov     e,m
 1932  23        inx     h
 1933  56        mov     d,m
@@ -4460,60 +4573,64 @@
 1936  23        inx     h
 1937  66        mov     h,m
 1938  6F        mov     l,a
-1939  C3 AD 09  jmp     $09AD
+1939  C3 AD 09  jmp     $09AD           // Draw XXXX (number) from DE
 
 // Draw "Credit "
 193C  0E 07     mvi     c,$07
 193E  21 01 35  lxi     h,$3501
 1941  11 A9 1F  lxi     d,$1FA9
-1944  C3 F3 08  jmp     $08F3               // Draw string (length = c - 1)
+1944  C3 F3 08  jmp     $08F3           // Draw string (length = c - 1, content = (de))
 
-// Draw coin
+// Draw coin from (20EB)
 1947  3A EB 20  lda     $20EB
 194A  21 01 3C  lxi     h,$3C01
-194D  C3 B2 09  jmp     $09B2
+194D  C3 B2 09  jmp     $09B2           // Draw XX (number) from A
 
 1950  21 F4 20  lxi     h,$20F4
-1953  C3 31 19  jmp     $1931
+1953  C3 31 19  jmp     $1931           // Draw XXXX (number) from m,m+1 to m+2,m+3
 
 1956  CD 5C 1A  call    $1A5C           // Zero out screen
-1959  CD 1A 19  call    $191A
-195C  CD 25 19  call    $1925
-195F  CD 2B 19  call    $192B
+1959  CD 1A 19  call    $191A           // TODO draw some string
+195C  CD 25 19  call    $1925           // Draw XXXX (number) from 20F8 - 20FB
+195F  CD 2B 19  call    $192B           // Draw XXXX (number) from 20FC - 20FF
 1962  CD 50 19  call    $1950
 1965  CD 3C 19  call    $193C           // Draw "credit"
-1968  C3 47 19  jmp     $1947
+1968  C3 47 19  jmp     $1947           // Draw coin from (20EB)
 
-196B  CD DC 19  call    $19DC
+196B  CD DC 19  call    $19DC           // (2094) AND b and then OUT 3
 196E  C3 71 16  jmp     $1671
 
 1971  3E 01     mvi     a,$01
 1973  32 6D 20  sta     $206D
 1976  C3 E6 16  jmp     $16E6
 
-// TODO after coin press
-1979  CD D7 19  call    $19D7
-197C  CD 47 19  call    $1947
+// clear (20E9) and draw "credit XX"
+1979  CD D7 19  call    $19D7           // clear (20E9)
+197C  CD 47 19  call    $1947           // Draw coin from (20EB)
 197F  C3 3C 19  jmp     $193C           // Draw "credit"
 
 1982  32 C1 20  sta     $20C1
 1985  C9        ret
 
+// TODO not used?
 1986  8B        adc     e
 1987  19        dad
 
-1988  C3 D6 09  jmp     $09D6           // Clear mid screen
+// Clear the middle of the screen
+1988  C3 D6 09  jmp     $09D6           // Clear the middle of the screen
 
+// TODO not used?
 198B  21 03 28  lxi     h,$2803
 198E  11 BE 19  lxi     d,$19BE
 1991  0E 13     mvi     c,$13
-1993  C3 F3 08  jmp     $08F3               // Draw string (length = c - 1)
+1993  C3 F3 08  jmp     $08F3           // Draw string (length = c - 1, content = (de))
 
-// TODO Unknown
 1996  00        nop
 1997  00        nop
 1998  00        nop
 1999  00        nop
+
+// TODO
 199A  3A 1E 20  lda     $201E
 199D  A7        ana     a
 199E  C2 AC 19  jnz     $19AC
@@ -4530,7 +4647,7 @@
 19B3  21 1B 2E  lxi     h,$2E1B
 19B6  11 F7 0B  lxi     d,$0BF7
 19B9  0E 09     mvi     c,$09
-19BB  C3 F3 08  jmp     $08F3               // Draw string (length = c - 1)
+19BB  C3 F3 08  jmp     $08F3           // Draw string (length = c - 1, content = (de))
 
 19BE  28        
 19BF  13        
@@ -4557,32 +4674,33 @@
 19D7  AF        xra     a
 19D8  C3 D3 19  jmp     $19D3
 
-// (2094) OR b and then OUT
 19DB  00        nop
+// (2094) AND b and then OUT 3
 19DC  3A 94 20  lda     $2094
 19DF  A0        ana     b
 19E0  32 94 20  sta     $2094
 19E3  D3 03     out     $03
 19E5  C9        ret
 
-// TODO before the live number is drawn
+// Draw lives indicators according to A
 19E6  21 01 27  lxi     h,$2701
-19E9  CA FA 19  jz      $19FA
+19E9  CA FA 19  jz      $19FA           // Clear lives indicators
 19EC  11 60 1C  lxi     d,$1C60
 19EF  06 10     mvi     b,$10
 19F1  4F        mov     c,a
-19F2  CD 39 14  call    $1439
+19F2  CD 39 14  call    $1439           // Draw 8*b from (de) at (hl)
 19F5  79        mov     a,c
 19F6  3D        dcr     a
 19F7  C2 EC 19  jnz     $19EC
+// Clear lives indicators
 19FA  06 10     mvi     b,$10
-19FC  CD CB 14  call    $14CB
+19FC  CD CB 14  call    $14CB           // Clear 8*b box
 19FF  7C        mov     a,h
 1A00  FE 35     cpi     $35
 1A02  C2 FA 19  jnz     $19FA
 1A05  C9        ret
 
-// If highest bit of (de) is (not) set, set CY
+// msb(DE) XOR (2072) is not set then set CARRY
 1A06  21 72 20  lxi     h,$2072         // $2072 -> hl
 1A09  46        mov     b,m             // (hl) -> b
 1A0A  1A        ldax    d               // (de) -> a
@@ -4626,7 +4744,7 @@
 1A37  C2 32 1A  jnz     $1A32
 1A3A  C9        ret
 
-// Copy data from m to regs
+// Copy data from m to regs (m:5) -> (EDLHB)
 1A3B  5E        mov     e,m
 1A3C  23        inx     h
 1A3D  56        mov     d,m
@@ -4640,7 +4758,7 @@
 1A45  6F        mov     l,a
 1A46  C9        ret
 
-HL/8 & 111111 | 10
+// TODO HL/8 & 111111 | 10 and ret
 1A47  C5        push    b
 1A48  06 03     mvi     b,$03
 1A4A  7C        mov     a,h
@@ -4685,18 +4803,18 @@ HL/8 & 111111 | 10
 1A7B  C2 69 1A  jnz     $1A69
 1A7E  C9        ret
 
-// Draw "lives" indicators
-1A7F  CD 2E 09  call    $092E
+// Draw "lives" indicators and number for player
+1A7F  CD 2E 09  call    $092E           // load (player)FF to HL
 1A82  A7        ana     a
 1A83  C8        rz
 1A84  F5        push    psw
 1A85  3D        dcr     a
 1A86  77        mov     m,a
-1A87  CD E6 19  call    $19E6
+1A87  CD E6 19  call    $19E6           // Draw lives indicators according to A
 1A8A  F1        pop     psw
 1A8B  21 01 25  lxi     h,$2501
 1A8E  E6 0F     ani     $0F
-1A90  C3 C5 09  jmp     $09C5       // Draw lives number
+1A90  C3 C5 09  jmp     $09C5           // Draw decimal number X from A
 
 1A93  00        
 1A94  00        
