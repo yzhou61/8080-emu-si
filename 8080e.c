@@ -86,7 +86,7 @@ static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, 
                             { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
                             { 111, 10, 10, 4, 117, 11, 7, 11, 111, 5, 10, 4, 117, 17, 7, 11, }, };
 
-#define INTEREST (0x201D)
+#define INTEREST (0x2015)
 
 static void print_stack(struct state_t *state)
 {
@@ -1184,7 +1184,7 @@ int execute(struct cpu_mem_t *machine, int cycles)
     struct state_t *state = (struct state_t *)machine->state;
 
     while (cycle < cycles) {
-        if (state->pc == 0x0b93) {
+        if (state->pc == 0x05f3) {
             ++stop_count;
         }
 

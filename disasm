@@ -836,6 +836,7 @@
 05BF  34        inr     m
 05C0  C9        ret
 
+// TODO when enemy shoot?
 05C1  11 7C 20  lxi     d,$207C
 05C4  CD 06 1A  call    $1A06           // msb(DE) XOR (2072) is not set then set CARRY
 05C7  D0        rnc
@@ -858,7 +859,7 @@
 05E9  3A 7E 20  lda     $207E
 05EC  80        add     b
 05ED  32 7B 20  sta     $207B
-05F0  CD 6C 06  call    $066C
+05F0  CD 6C 06  call    $066C           // TODOTODO draw one enemy bullet
 05F3  3A 7B 20  lda     $207B
 05F6  FE 15     cpi     $15
 05F8  DA 12 06  jc      $0612
@@ -923,14 +924,14 @@
 065E  35        dcr     m
 065F  3E 06     mvi     a,$06
 0661  32 7D 20  sta     $207D
-0664  C3 6C 06  jmp     $066C
+0664  C3 6C 06  jmp     $066C           // TODOTODO draw one enemy bullet
 
 // TODO
 0667  A7        ana     a
 0668  C0        rnz
 0669  C3 75 06  jmp     $0675
 
-// TODO
+// TODOTODO draw one enemy bullet
 066C  21 79 20  lxi     h,$2079
 066F  CD 3B 1A  call    $1A3B           // Copy data from m to regs (m:5) -> (EDLHB)
 0672  C3 91 14  jmp     $1491
@@ -1631,7 +1632,7 @@
 0B74  CD F1 0B  call    $0BF1
 0B77  D3 06     out     $06
 0B79  CD 59 0A  call    $0A59           // cmp (2015) with FF
-0B7C  CA 71 0B  jz      $0B71
+0B7C  CA 71 0B  jz      $0B71           // if (2015) is FF, loop
 0B7F  AF        xra     a
 0B80  32 25 20  sta     $2025
 0B83  CD 59 0A  call    $0A59           // cmp (2015) with FF
@@ -4108,16 +4109,16 @@
 
 1618  3A 15 20  lda     $2015
 161B  FE FF     cpi     $FF
-161D  C0        rnz
+161D  C0        rnz                     // Return if (2015) is not FF
 161E  21 10 20  lxi     h,$2010
 1621  7E        mov     a,m
 1622  23        inx     h
 1623  46        mov     b,m
-1624  B0        ora     b
-1625  C0        rnz
+1624  B0        ora     b               // (2010) OR (2011)
+1625  C0        rnz                     // Return if any is non-zero
 1626  3A 25 20  lda     $2025
 1629  A7        ana     a
-162A  C0        rnz
+162A  C0        rnz                     // Return if (2025) is not zero
 162B  3A EF 20  lda     $20EF           // TODO I'm playing now
 162E  A7        ana     a
 162F  CA 52 16  jz      $1652
