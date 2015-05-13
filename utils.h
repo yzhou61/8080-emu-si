@@ -8,4 +8,4 @@
         _exit(1);                   \
     } while (0)
 
-#define TRACE(...) printf(__VA_ARGS__)
+#define TRACE(...) //printf(__VA_ARGS__)

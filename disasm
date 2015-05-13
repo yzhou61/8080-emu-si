@@ -2,7 +2,7 @@
 0000  00        nop
 0001  00        nop
 0002  00        nop
-0003  C3 D4 18  jmp     $18D4    // set sp = 2400; copy 256B 1B00 -> 2000
+0003  C3 D4 18  jmp     $18D4    // initial
 
 0006  00        nop
 0007  00        nop
@@ -43,7 +43,7 @@
 003F  32 EA 20  sta     $20EA           // Return from coin (clear 20EA)
 0042  3A E9 20  lda     $20E9
 0045  A7        ana     a
-0046  CA 82 00  jz      $0082
+0046  CA 82 00  jz      $0082           // Return from int handler
 0049  3A EF 20  lda     $20EF           // TODO I'm playing now
 004C  A7        ana     a
 004D  C2 6F 00  jnz     $006F           // TODO Start drawing one unit
@@ -51,11 +51,11 @@
 0053  A7        ana     a
 0054  C2 5D 00  jnz     $005D           // Jump to game
 0057  CD BF 0A  call    $0ABF           // TODO Check 20C1 state
-005A  C3 82 00  jmp     $0082
+005A  C3 82 00  jmp     $0082           // Return from int handler
 
 005D  3A 93 20  lda     $2093
 0060  A7        ana     a
-0061  C2 82 00  jnz     $0082
+0061  C2 82 00  jnz     $0082           // Return from int handler
 0064  C3 65 07  jmp     $0765           // Jump to actual game
 
 // Coin
@@ -90,17 +90,17 @@
 008D  32 72 20  sta     $2072           // 0 -> (2072)
 0090  3A E9 20  lda     $20E9
 0093  A7        ana     a
-0094  CA 82 00  jz      $0082           // if (a == 0) return;
+0094  CA 82 00  jz      $0082           // Return from int handler
 0097  3A EF 20  lda     $20EF           // TODO I'm playing now
 009A  A7        ana     a
 009B  C2 A5 00  jnz     $00A5
 009E  3A C1 20  lda     $20C1
 00A1  0F        rrc
-00A2  D2 82 00  jnc     $0082
+00A2  D2 82 00  jnc     $0082           // Return from int handler
 00A5  21 20 20  lxi     h,$2020
 00A8  CD 4B 02  call    $024B
 00AB  CD 41 01  call    $0141
-00AE  C3 82 00  jmp     $0082
+00AE  C3 82 00  jmp     $0082           // Return from int handler
 
 00B1  CD 86 08  call    $0886           // let HL be (2067)FC
 00B4  E5        push    h
@@ -591,7 +591,7 @@
 03CE  CA 0A 04  jz      $040A
 03D1  23        inx     h
 03D2  FE 03     cpi     $03
-03D4  C2 2A 04  jnz     $042A
+03D4  C2 2A 04  jnz     $042A           // if A is 05, return; otherwise call 0436
 03D7  35        dcr     m
 03D8  CA 36 04  jz      $0436
 03DB  7E        mov     a,m
@@ -599,7 +599,7 @@
 03DE  C0        rnz
 03DF  E5        push    h
 03E0  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
-03E3  CD 52 14  call    $1452
+03E3  CD 52 14  call    $1452           // TODO clear player bullet after hit
 03E6  E1        pop     h
 03E7  23        inx     h
 03E8  34        inr     m
@@ -625,12 +625,12 @@
 0404  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 0407  C3 00 14  jmp     $1400
 
-// TODO draw bullet?
+// TODO draw player bullet?
 040A  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 040D  D5        push    d
 040E  E5        push    h
 040F  C5        push    b
-0410  CD 52 14  call    $1452
+0410  CD 52 14  call    $1452           // clear player bullet before shoot
 0413  C1        pop     b
 0414  E1        pop     h
 0415  D1        pop     d
@@ -645,6 +645,7 @@
 0426  32 02 20  sta     $2002
 0429  C9        ret
 
+// if A is 05, return; otherwise call 0436
 042A  FE 05     cpi     $05
 042C  C8        rz
 042D  C3 36 04  jmp     $0436
@@ -655,7 +656,7 @@
 
 // TODOTODOTODO draw explosion???
 0436  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
-0439  CD 52 14  call    $1452
+0439  CD 52 14  call    $1452           // clear bullet after explosion
 043C  21 25 20  lxi     h,$2025
 043F  11 25 1B  lxi     d,$1B25
 0442  06 07     mvi     b,$07
@@ -1074,7 +1075,7 @@
 
 0765  3E 01     mvi     a,$01
 0767  32 93 20  sta     $2093           // Set (2093)
-076A  31 00 24  lxi     sp,$2400
+076A  31 00 24  lxi     sp,$2400        // Start screen after coin press
 076D  FB        ei
 076E  CD 79 19  call    $1979           // clear (20E9) and draw "credit XX"
 0771  CD D6 09  call    $09D6           // Clear the middle of the screen
@@ -1580,7 +1581,7 @@
 0AE5  06 0C     mvi     b,$0C
 0AE7  C3 32 1A  jmp     $1A32           // copy (de) to (hl), size b
 
-// Main game
+// Initial screen
 0AEA  AF        xra     a
 0AEB  D3 03     out     $03
 0AED  D3 05     out     $05
@@ -4508,14 +4509,14 @@
 18CE  CD FF 08  call    $08FF           // Depending on A, draw a char
 18D1  C3 B6 0A  jmp     $0AB6           // Delay for $80
 
-// Initial screen
+// Initial
 18D4  31 00 24  lxi     sp,$2400
 18D7  06 00     mvi     b,$00
 18D9  CD E6 01  call    $01E6           // Copy 256B 1B00 -> 2000
 18DC  CD 56 19  call    $1956           // Zero out screen
 18DF  3E 08     mvi     a,$08
 18E1  32 CF 20  sta     $20CF
-18E4  C3 EA 0A  jmp     $0AEA           // Start main game?
+18E4  C3 EA 0A  jmp     $0AEA           // Initial screen
 
 // if (lsb(2067) == 1) h = 20E8; else h = 20E7;
 18E7  3A 67 20  lda     $2067           // player indicator (21/22)

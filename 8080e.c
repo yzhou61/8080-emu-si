@@ -42,6 +42,7 @@
                       print_stack(state)
 
 struct state_t {
+    struct cpu_mem_t *machine;
     unsigned short pc;
     unsigned char *program;
     unsigned short program_size;
@@ -59,15 +60,16 @@ struct state_t {
     unsigned char *l;
     unsigned char *mem;
     unsigned char intr;
+    unsigned char pending_intr;
     unsigned short shift_reg;
     unsigned char shift_reg_offset;
 };
 
 static struct keyboard_t *keyboard;
 static int stop = 20;
-static unsigned long long count = 0;
+//static unsigned long long count = 0;
 static unsigned long long total_cycles = 0;
-static int stop_count = 0;
+//static int stop_count = 0;
 
 static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
                             { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, },
@@ -86,10 +88,11 @@ static int cycles[][16] = { { 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, 
                             { 111, 10, 10, 10, 117, 11, 7, 11, 111, 10, 10, 10, 117, 17, 7, 11, },
                             { 111, 10, 10, 4, 117, 11, 7, 11, 111, 5, 10, 4, 117, 17, 7, 11, }, };
 
-#define INTEREST (0x2015)
 
 static void print_stack(struct state_t *state)
 {
+    /*
+#define INTEREST (0x2015)
     int i;
     static unsigned char m;
 
@@ -103,14 +106,13 @@ static void print_stack(struct state_t *state)
 
         //++stop_count;
 
-    /*
-    for (i = STACK_BOTTOM; i >= state->sp; --i) {
-        TRACE("0x%02x ", MEM_LOC(i));
-    }
-    */
+    //for (i = STACK_BOTTOM; i >= state->sp; --i) {
+        //TRACE("0x%02x ", MEM_LOC(i));
+    //}
 
         TRACE("\n");
     }
+    */
 }
 
 static long init_program(const char *name, unsigned char *buffer)
@@ -162,7 +164,9 @@ struct cpu_mem_t *init_machine(const char *bin_name, struct keyboard_t *k)
     }
     state = res->state;
 
+    state->machine = res;
     state->intr = 0;
+    state->pending_intr = 0;
     state->shift_reg = 0;
     state->shift_reg_offset = 0;
     state->pc = 0;
@@ -857,6 +861,10 @@ static void STA(struct state_t *state)
 static void EI(struct state_t *state)
 {
     state->intr = 1;
+    if (state->pending_intr) {
+        generate_intr(state->machine, state->pending_intr);
+        state->pending_intr = 0;
+    }
 }
 
 static void STC(struct state_t *state)
@@ -1169,8 +1177,11 @@ void generate_intr(struct cpu_mem_t *machine, int intr_num)
     struct state_t *state = (struct state_t *)machine->state;
 
     if (!state->intr) {
+        state->pending_intr = intr_num;
         return;
     }
+
+    state->intr = 0;
 
     --state->sp; MEM_LOC(state->sp) = ((state->pc >> 8) & 0x00FF);
     --state->sp; MEM_LOC(state->sp) = (state->pc & 0x00FF);
@@ -1184,13 +1195,15 @@ int execute(struct cpu_mem_t *machine, int cycles)
     struct state_t *state = (struct state_t *)machine->state;
 
     while (cycle < cycles) {
-        if (state->pc == 0x0439) {
-            ++stop_count;
+        /*
+        if (state->pc == 0x0b8d) {
+            //++stop_count;
         }
 
-        if (stop_count == 2) {
+        if (stop_count == 1) {
             return -1;
         }
+        */
 
         cycle += execute_one(state);
     }
