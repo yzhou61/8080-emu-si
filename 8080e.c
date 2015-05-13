@@ -1184,11 +1184,11 @@ int execute(struct cpu_mem_t *machine, int cycles)
     struct state_t *state = (struct state_t *)machine->state;
 
     while (cycle < cycles) {
-        if (state->pc == 0x05f3) {
+        if (state->pc == 0x0439) {
             ++stop_count;
         }
 
-        if (stop_count == 1) {
+        if (stop_count == 2) {
             return -1;
         }
 

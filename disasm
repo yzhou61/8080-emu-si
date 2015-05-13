@@ -616,6 +616,7 @@
 03F4  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 03F7  C3 00 14  jmp     $1400
 
+// TODO draw part of the player?
 03FA  3C        inr     a
 03FB  77        mov     m,a
 03FC  3A 1B 20  lda     $201B           // TODO player location horizontal
@@ -624,6 +625,7 @@
 0404  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 0407  C3 00 14  jmp     $1400
 
+// TODO draw bullet?
 040A  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 040D  D5        push    d
 040E  E5        push    h
@@ -636,7 +638,7 @@
 0419  85        add     l
 041A  6F        mov     l,a
 041B  32 29 20  sta     $2029
-041E  CD 91 14  call    $1491
+041E  CD 91 14  call    $1491           // TODO draw player bullet
 0421  3A 61 20  lda     $2061
 0424  A7        ana     a
 0425  C8        rz
@@ -651,6 +653,7 @@
 0430  21 27 20  lxi     h,$2027
 0433  C3 3B 1A  jmp     $1A3B           // Copy data from m to regs (m:5) -> (EDLHB)
 
+// TODOTODOTODO draw explosion???
 0436  CD 30 04  call    $0430           // Copy (2027:5) -> (EDLHB)
 0439  CD 52 14  call    $1452
 043C  21 25 20  lxi     h,$2025
