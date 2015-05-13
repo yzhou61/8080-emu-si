@@ -581,6 +581,11 @@ static void LDAX(struct state_t *state, unsigned int reg)
     state->a = MEM_LOC(reg);
 }
 
+static void STAX(struct state_t *state, unsigned int reg)
+{
+    MEM_LOC(reg) = state->a;
+}
+
 static void MOV(struct state_t *state, unsigned char instr)
 {
     unsigned char dst, src;
@@ -703,7 +708,6 @@ static void XCHG(struct state_t *state)
     state->de = tmp;
 }
 
-// TODO
 static void IN(struct state_t *state)
 {
     unsigned char i = read_8b(state);
@@ -713,7 +717,22 @@ static void IN(struct state_t *state)
             state->a = 0x0D;
             break;
         case 1:
-            state->a = (keyboard->p1_shoot << 4) | (keyboard->p1_start << 2) | (keyboard->p2_start << 1) | (keyboard->coin) | 0x08;
+            state->a = keyboard->p1_right;
+            state->a <<= 1;
+            state->a |= keyboard->p1_left;
+            state->a <<= 1;
+            state->a |= keyboard->p1_shoot;
+            state->a <<= 1;
+            state->a |= 1;
+            state->a <<= 1;
+            state->a |= keyboard->p1_start;
+            state->a <<= 1;
+            state->a |= keyboard->p2_start;
+            state->a <<= 1;
+            state->a |= keyboard->coin;
+            break;
+        case 2:
+            state->a = (keyboard->p2_shoot << 4) | (keyboard->p2_left << 5) | (keyboard->p2_right << 6);
             break;
         case 3:
             state->a = ((state->shift_reg >> (8 - state->shift_reg_offset)) & 0xFF);
@@ -724,7 +743,6 @@ static void IN(struct state_t *state)
     }
 }
 
-// TODO
 static void OUT(struct state_t *state)
 {
     unsigned char i = read_8b(state);
@@ -983,6 +1001,11 @@ static int execute_one(struct state_t *state)
                 TRACE_INS(NOP);
                 NOP(state);
                 break;
+            case 0x02:
+                TRACE_INS(STAX);
+                TRACE("BC\t");
+                STAX(state, state->bc);
+                break;
             case 0x07:
                 TRACE_INS(RLC);
                 RLC(state);
@@ -995,6 +1018,11 @@ static int execute_one(struct state_t *state)
             case 0x0F:
                 TRACE_INS(RRC);
                 RRC(state);
+                break;
+            case 0x12:
+                TRACE_INS(STAX);
+                TRACE("DE\t");
+                STAX(state, state->de);
                 break;
             case 0x1A:
                 TRACE_INS(LDAX);

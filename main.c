@@ -77,6 +77,25 @@ static void draw_ptr(int x, int y)
     glVertex3f((float)x / DISPLAY_WIDTH * 2 - 1.0f, (float)y/ DISPLAY_HEIGHT * 2 - 1.0f, 0.0);
 }
 
+static void set_gl_color(int x, int y)
+{
+    if (y < 2) {
+        if (x < 16 || x >= 134) {
+            glColor3f(1, 1, 1);
+        } else {
+            glColor3f(0, 1, 0);
+        }
+    } else if (y < 9) {
+        glColor3f(0, 1, 0);
+    } else if (y < 24) {
+        glColor3f(1, 1, 1);
+    } else if (y < 28) {
+        glColor3f(1, 0, 0);
+    } else {
+        glColor3f(1, 0, 0);
+    }
+}
+
 static void draw()
 {
     int i, j, l;
@@ -86,6 +105,9 @@ static void draw()
     for (l = 0; l < DISPLAY_WIDTH; ++l) {
         for (i = 0; i < BYTES_PER_SCANLINE; ++i) {
             unsigned char b = display[l * BYTES_PER_SCANLINE + i];
+
+            set_gl_color(l, i);
+
             for (j = 0; j < 8; ++j) {
                 if ((b & 0x01) != 0) {
                     int y = i * 8 + j;
